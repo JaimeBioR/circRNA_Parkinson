@@ -12,7 +12,7 @@
 <meta name="author" content="Jaime Ñíguez Baeza" />
 
 
-<title>Entrenamiento Lasso</title>
+<title>Machine Learning: Entrenamiento Lasso</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -577,20 +577,409 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Entrenamiento Lasso</h1>
+<h1 class="title toc-ignore">Machine Learning: Entrenamiento Lasso</h1>
 <h4 class="author">Jaime Ñíguez Baeza</h4>
 
 </div>
 
-
-<div id="modelos-predictivos" class="section level1">
-<h1>Modelos predictivos</h1>
+<div id="TOC">
+<ul>
+<li><a href="#preparación-del-conjunto-de-datos" id="toc-preparación-del-conjunto-de-datos">Preparación del conjunto de
+datos</a></li>
+<li><a href="#modelo-de-regresión-lasso" id="toc-modelo-de-regresión-lasso">Modelo de regresión Lasso</a>
+<ul>
+<li><a href="#ajuste-del-modelo" id="toc-ajuste-del-modelo">Ajuste del
+modelo</a></li>
+<li><a href="#validación" id="toc-validación">Validación</a></li>
+<li><a href="#características-seleccionadas" id="toc-características-seleccionadas">Características
+seleccionadas</a></li>
+</ul></li>
+<li><a href="#modelos-de-regresión-lasso-con-balanceo-de-clases" id="toc-modelos-de-regresión-lasso-con-balanceo-de-clases">Modelos de
+regresión Lasso con balanceo de clases</a>
+<ul>
+<li><a href="#modelo-de-regresión-lasso-con-sobremuestreo-de-la-clase-minoritaria" id="toc-modelo-de-regresión-lasso-con-sobremuestreo-de-la-clase-minoritaria">Modelo
+de regresión Lasso con sobremuestreo de la clase minoritaria</a>
+<ul>
+<li><a href="#ajuste-del-modelo-1" id="toc-ajuste-del-modelo-1">Ajuste
+del modelo</a></li>
+<li><a href="#validación-1" id="toc-validación-1">Validación</a></li>
+<li><a href="#características-seleccionadas-1" id="toc-características-seleccionadas-1">Características
+seleccionadas</a></li>
+</ul></li>
+<li><a href="#modelo-de-regresión-lasso-con-submuestreo-de-la-clase-mayoritaria" id="toc-modelo-de-regresión-lasso-con-submuestreo-de-la-clase-mayoritaria">Modelo
+de regresión Lasso con submuestreo de la clase mayoritaria</a>
+<ul>
+<li><a href="#ajuste-del-modelo-2" id="toc-ajuste-del-modelo-2">Ajuste
+del modelo</a></li>
+<li><a href="#validación-2" id="toc-validación-2">Validación</a></li>
+<li><a href="#características-seleccionadas-2" id="toc-características-seleccionadas-2">Características
+seleccionadas</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#comparación-del-rendimiento-entre-modelos" id="toc-comparación-del-rendimiento-entre-modelos">Comparación del
+rendimiento entre modelos</a></li>
+<li><a href="#session-info" id="toc-session-info">Session Info</a></li>
+</ul>
 </div>
+
+<p>A lo largo de este documento se va a exponer la preparación de los
+distintos modelos de aprendizaje supervisado Lasso y su validación
+frente a un conjunto de test independiente.</p>
+<p>El algoritmo de selección de características Lasso se ha utilizado en
+base a la información contenida en:</p>
+<ul>
+<li><p><a href="https://www.statlearning.com/">Gareth James, Daniela
+Witten, Trevor Hastie, Robert Tibshirani. (2013). “An introduction to
+statistical learning : with applications in R”. New York :Springer.
+Descargado de https://www.statlearning.com/</a></p></li>
+<li><p><a href="https://glmnet.stanford.edu/articles/glmnet.html">Friedman, J.,
+Hastie, T., Tibshirani, R., Narasimhan, B., Tay, K., Simon, N., &amp;
+Qian, J. (2024). “glmnet: Lasso and Elastic-Net Regularized Generalized
+Linear Models”. Recuperado de https://glmnet.stanford.edu</a></p></li>
+<li><p><a href="https://www.youtube.com/watch?v=ctmNq7FgbvI">Starmer, J.
+(2018), StatQuest. “Ridge, Lasso and Elastic-Net Regression in R”,
+YouTube. Recuperado de
+https://www.youtube.com/watch?v=ctmNq7FgbvI.</a></p></li>
+</ul>
+<p>Las librerías utilizadas han sido:</p>
+<pre class="r"><code>set.seed(12345)
+library(dplyr)
+library(caret)
+library(glmnet)
+library(ggplot2)
+library(kableExtra)</code></pre>
 <div id="preparación-del-conjunto-de-datos" class="section level1">
 <h1>Preparación del conjunto de datos</h1>
+<p>Para este análisis vamos a utilizar el conjunto de datos ya
+cuantificados procedentes de los ficheros BAM de RNA-Seq, los cuales
+contienen datos para 2176 circRNA en una población de 858 pacientes
+totales, englobando sujetos con Parkinson y controles sanos.</p>
+<p>Como se puede observar en la tabla ejemplo, estos datos incluyen
+además de los valores de expresión procesados y el diagnóstico
+Casos-Control (<em>Ca_Co_Last</em>) una serie de variables como
+<em>sex</em> y <em>age_at_baseline</em> que no serán incorporadas en
+este estudio.</p>
 <pre class="r"><code>Genes = read.delim(&#39;CA_CO_LAST_sexo_edad_Normalized_Cleaned_PPMI_CIRCS.tsv&#39;)
 
-train_i = createDataPartition(Genes$Ca_Co_Last,p=0.8,list=FALSE)
+kbl(Genes[c(1:6), c(1:10, 2174:2176)], row.names = FALSE) %&gt;%
+  kable_paper() %&gt;%
+  scroll_box(width = &quot;100%&quot;, height = &quot;200px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:200px; overflow-x: scroll; width:100%; ">
+<table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circAAGAB
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circAARS1
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circAATF
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCA13
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCA5
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCB10
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCB7
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCC1
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCC13
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+circABCC4
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+Ca_Co_Last
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+sex
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+age_at_baseline
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+2.9532896
+</td>
+<td style="text-align:right;">
+1.855296
+</td>
+<td style="text-align:right;">
+5.202926
+</td>
+<td style="text-align:right;">
+2.9532896
+</td>
+<td style="text-align:right;">
+5.202926
+</td>
+<td style="text-align:right;">
+1.8552965
+</td>
+<td style="text-align:right;">
+2.750246
+</td>
+<td style="text-align:right;">
+2.750246
+</td>
+<td style="text-align:right;">
+7.538008
+</td>
+<td style="text-align:left;">
+Case
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:right;">
+62
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+3.2880880
+</td>
+<td style="text-align:right;">
+1.855296
+</td>
+<td style="text-align:right;">
+3.982021
+</td>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+4.070827
+</td>
+<td style="text-align:right;">
+1.8552965
+</td>
+<td style="text-align:right;">
+2.750246
+</td>
+<td style="text-align:right;">
+1.855296
+</td>
+<td style="text-align:right;">
+6.186749
+</td>
+<td style="text-align:left;">
+Case
+</td>
+<td style="text-align:left;">
+Male
+</td>
+<td style="text-align:right;">
+60
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+3.1306007
+</td>
+<td style="text-align:right;">
+2.224029
+</td>
+<td style="text-align:right;">
+4.745466
+</td>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+3.676832
+</td>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+1.855296
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+5.639206
+</td>
+<td style="text-align:left;">
+Case
+</td>
+<td style="text-align:left;">
+Male
+</td>
+<td style="text-align:right;">
+64
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2.2240287
+</td>
+<td style="text-align:right;">
+1.8552965
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+3.887345
+</td>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+4.233471
+</td>
+<td style="text-align:right;">
+2.2240287
+</td>
+<td style="text-align:right;">
+3.558666
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+4.512139
+</td>
+<td style="text-align:left;">
+Control
+</td>
+<td style="text-align:left;">
+Male
+</td>
+<td style="text-align:right;">
+60
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+2.9532896
+</td>
+<td style="text-align:right;">
+2.512319
+</td>
+<td style="text-align:right;">
+3.288088
+</td>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+3.676832
+</td>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+2.953290
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+4.690585
+</td>
+<td style="text-align:left;">
+Control
+</td>
+<td style="text-align:left;">
+Female
+</td>
+<td style="text-align:right;">
+70
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+-0.1075195
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+2.224029
+</td>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+2.750246
+</td>
+<td style="text-align:right;">
+1.3297687
+</td>
+<td style="text-align:right;">
+2.512319
+</td>
+<td style="text-align:right;">
+1.329769
+</td>
+<td style="text-align:right;">
+4.849323
+</td>
+<td style="text-align:left;">
+Case
+</td>
+<td style="text-align:left;">
+Male
+</td>
+<td style="text-align:right;">
+65
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>En cuanto a la proporción de diagnósticos, esta se encuentra en 538
+Casos y 320 Controles, por lo que la proporción de la clase mayoritaria
+(Casos) se establecería en 0.627 del total.</p>
+<pre class="r"><code>table(Genes$Ca_Co_Last)</code></pre>
+<pre><code>## 
+##    Case Control 
+##     538     320</code></pre>
+<pre class="r"><code>538/858</code></pre>
+<pre><code>## [1] 0.6270396</code></pre>
+<p>El primer paso va a consistir en la división de estos datos en un
+conjunto de entrenamiento (<em>train</em>), que utilizaremos para
+elaborar los modelos predictivos y otro conjunto de validaciób
+(<em>test</em>), con el que evaluaremos el rendimiento predictivo.</p>
+<p>Para estos modelos se utilizará una división 80%-20% de los datos
+para train y test respectivamente, además de la separación de los
+predictores y la variable respuesta en cada uno de ellos (conjuntos
+<em>x</em> para los predictores y conjuntos <em>y</em> para la
+respuesta).</p>
+<p>Se eliminarán las variables que quedan fuera de nuestro estudio al
+realizar esta selección.</p>
+<pre class="r"><code>train_i = createDataPartition(Genes$Ca_Co_Last,p=0.8,list=FALSE)
 train = Genes[train_i,]
 test = Genes[-train_i,]
 x.train = subset(train, select = -c(Ca_Co_Last,sex,age_at_baseline))
@@ -602,21 +991,49 @@ y.test = ifelse(y.test == &quot;Case&quot;,1,0)</code></pre>
 </div>
 <div id="modelo-de-regresión-lasso" class="section level1">
 <h1>Modelo de regresión Lasso</h1>
+<p>A continuación se muestra el proceso realizado para el conjunto Lasso
+en el que no se balancearon las clases, por lo que considera el número
+original de muestras: 538 Casos: 320 Control.</p>
 <div id="ajuste-del-modelo" class="section level2">
 <h2>Ajuste del modelo</h2>
+<p>El ajuste del modelo comienza por la selección del mejor valor para
+el factor de penalización <span class="math inline">\(\lambda\)</span>,
+el cual determinará lo estricta que resulte la regularización Lasso y
+por lo tanto qué predictores serán utilizados en el modelo final.</p>
+<p>Esta selección se realiza mediante validación cruzada sobre el
+conjunto de entrenamiento, seleccionando el parámetro <span class="math inline">\(\alpha\)</span>, el cual indica una regularización
+Lasso y como métrica a minimizar el Error Absoluto Medio
+(<em>mae</em>).</p>
 <pre class="r"><code>Traindata_x_Mat &lt;- data.matrix(x.train)
 cvLassodata &lt;- cv.glmnet(Traindata_x_Mat, y.train, alpha = 1, type.measure = &quot;mae&quot;)
 
 Lambda &lt;- cvLassodata$lambda.min
 Lambda</code></pre>
 <pre><code>## [1] 0.01417837</code></pre>
-<pre class="r"><code>plot(cvLassodata$glmnet.fit, xlim = c(Lambda, 1.0), label = TRUE)</code></pre>
-<p><img src="data:image/png;base64,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" width="672" /></p>
+<p>A continuación se ajusta el modelo utilizando el mejor valor de <span class="math inline">\(\lambda\)</span> (0.01418), el cual genera un
+modelo compuesto por 238 predictores seleccionados entre los 2176
+originales, habiéndose reducido en gran medida su dimensionalidad.</p>
 <pre class="r"><code>lasso.mod &lt;- glmnet(x.train, y.train, alpha = 1,
-     lambda = Lambda, family = &quot;binomial&quot;)</code></pre>
+     lambda = Lambda, family = &quot;binomial&quot;)
+lasso.mod</code></pre>
+<pre><code>## 
+## Call:  glmnet(x = x.train, y = y.train, family = &quot;binomial&quot;, alpha = 1,      lambda = Lambda) 
+## 
+##    Df  %Dev  Lambda
+## 1 238 52.12 0.01418</code></pre>
 </div>
 <div id="validación" class="section level2">
 <h2>Validación</h2>
+<p>Para determinar si los predictores seleccionados portan información
+acerca del desarrollo del Parkinson, vamos a llevar a cabo un estudio de
+validación mediante el que se realizarán predicciones sobre el conjunto
+de test.</p>
+<p>Posteriormente se generará la matriz de confusión entre las clases
+predichas y las reales y se establecerá el rendimiento del modelo, para
+el cual se valorará que posea una capacidad discriminativa general
+(<em>Accuracy</em>) entre las clases superior a la proporción de la
+clase mayoritaria, indicada mediante el <em>No Information Rate</em>
+(NIR)</p>
 <pre class="r"><code>Testdata_x_Mat &lt;- data.matrix(x.test)
 predicciones &lt;- as.data.frame(predict(lasso.mod, newx = Testdata_x_Mat, s = &quot;lambda.min&quot;, type = &quot;response&quot;))
 
@@ -628,8 +1045,14 @@ predicciones$clase_pred &lt;- clases_predichas
 # Matriz de confusión.
 Testdata_y_fact &lt;- as.factor(y.test)
 factorpred &lt;- as.factor(predicciones$clase_pred)
-confusion_matrix_Lasso &lt;- caret::confusionMatrix(factorpred, Testdata_y_fact, positive = &quot;1&quot;)
-confusion_matrix_Lasso</code></pre>
+confusion_matrix_Lasso &lt;- caret::confusionMatrix(factorpred, Testdata_y_fact, positive = &quot;1&quot;)</code></pre>
+<p>Se obtiene como resultado un valor de <em>Accuracy</em> de 0.6725,
+superior al NIR de 0.6257 con un <span class="math inline">\(p-value\)</span> que no permite asegurar que esta
+diferencia no se deba al azar. No obstante, consideraremos los
+predictores seleccionados de forma provisional en los siguientes
+análisis al ser este <span class="math inline">\(p-value\)</span>
+relativamente pequeño.</p>
+<pre class="r"><code>confusion_matrix_Lasso</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
@@ -660,7 +1083,12 @@ confusion_matrix_Lasso</code></pre>
 </div>
 <div id="características-seleccionadas" class="section level2">
 <h2>Características seleccionadas</h2>
-<pre class="r"><code># Extraigo los coeficientes:
+<p>En este apartado vamos a generar un dataframe en el que se incluirán
+los predictores ordenados de forma descendente en base a su
+coeficiente.</p>
+<p>Se muestran a continuación los predictores seleccionados y sus
+coeficientes</p>
+<pre class="r"><code># Extraigo los coeficientes del modelo:
 coeficientes_lasso &lt;- coef(lasso.mod, s = &quot;lambda.min&quot;)
 
 # Para poder seleccionar mejor cuales son distintos de 0 hago unos cambios en la estructura de los datos.
@@ -674,94 +1102,1991 @@ df_coeficientes_lasso &lt;- as.data.frame(rownames(coeficientes_lasso))
 colnames(df_coeficientes_lasso) &lt;- &quot;Predictores&quot;
 
 # Le añado los coeficientes correspondientes
-df_coeficientes_lasso$coeficientes &lt;- coef_vector
+df_coeficientes_lasso$Coeficientes &lt;- coef_vector
 
 # Filtro aquellos distintos de 0
 predictoresLasso &lt;- df_coeficientes_lasso[indices,]
-predictoresLasso$Predictores</code></pre>
-<pre><code>##   [1] &quot;(Intercept)&quot;    &quot;circABCA5&quot;      &quot;circABCB7&quot;      &quot;circAC118549.1&quot;
-##   [5] &quot;circAC139795.1&quot; &quot;circACER3&quot;      &quot;circACTR10&quot;     &quot;circADK&quot;       
-##   [9] &quot;circAKAP8L&quot;     &quot;circALG8&quot;       &quot;circALS2&quot;       &quot;circANKAR&quot;     
-##  [13] &quot;circANKRD13C&quot;   &quot;circANKRD46&quot;    &quot;circAP1G1&quot;      &quot;circAP3D1&quot;     
-##  [17] &quot;circAPOOL&quot;      &quot;circARL6IP6&quot;    &quot;circARMH3&quot;      &quot;circATF7IP&quot;    
-##  [21] &quot;circATP13A1&quot;    &quot;circATP8B4&quot;     &quot;circATXN1&quot;      &quot;circB3GLCT&quot;    
-##  [25] &quot;circB4GALT5&quot;    &quot;circBCL2&quot;       &quot;circBRAF&quot;       &quot;circBRWD3&quot;     
-##  [29] &quot;circBTBD7&quot;      &quot;circBTN2A2&quot;     &quot;circCARD6&quot;      &quot;circCASP8AP2&quot;  
-##  [33] &quot;circCATSPERG&quot;   &quot;circCCS&quot;        &quot;circCCT3&quot;       &quot;circCD83&quot;      
-##  [37] &quot;circCDC14B&quot;     &quot;circCEP295&quot;     &quot;circCEP350&quot;     &quot;circCLEC16A&quot;   
-##  [41] &quot;circCLIC2&quot;      &quot;circCLIP4&quot;      &quot;circCNOT1&quot;      &quot;circCNOT2&quot;     
-##  [45] &quot;circCNOT9&quot;      &quot;circCOA1&quot;       &quot;circCOMMD10&quot;    &quot;circCPT1A&quot;     
-##  [49] &quot;circCRY1&quot;       &quot;circCSTF3&quot;      &quot;circCTDSPL2&quot;    &quot;circDAAM1&quot;     
-##  [53] &quot;circDCTD&quot;       &quot;circDCUN1D1&quot;    &quot;circDDX50&quot;      &quot;circDEPDC1&quot;    
-##  [57] &quot;circDHRSX&quot;      &quot;circDIAPH1&quot;     &quot;circDIAPH3&quot;     &quot;circDMC1&quot;      
-##  [61] &quot;circDOT1L&quot;      &quot;circEAF2&quot;       &quot;circEDC3&quot;       &quot;circEFL1&quot;      
-##  [65] &quot;circEIF3B&quot;      &quot;circELK4&quot;       &quot;circENGASE&quot;     &quot;circEPDR1&quot;     
-##  [69] &quot;circEPSTI1&quot;     &quot;circERBB2&quot;      &quot;circERICH1&quot;     &quot;circEXO1&quot;      
-##  [73] &quot;circEXTL3&quot;      &quot;circFAM120B&quot;    &quot;circFAM13A&quot;     &quot;circFAN1&quot;      
-##  [77] &quot;circFANCM&quot;      &quot;circFBXL17&quot;     &quot;circFIRRE&quot;      &quot;circFNDC3A&quot;    
-##  [81] &quot;circFRMD4A&quot;     &quot;circFRY&quot;        &quot;circFTO&quot;        &quot;circFUT8&quot;      
-##  [85] &quot;circGARS1&quot;      &quot;circGGA3&quot;       &quot;circGIN1&quot;       &quot;circGPR107&quot;    
-##  [89] &quot;circGYG2P1&quot;     &quot;circHACD1&quot;      &quot;circHBS1L&quot;      &quot;circHDAC9&quot;     
-##  [93] &quot;circHERC2P9&quot;    &quot;circHNRNPM&quot;     &quot;circHSPA14&quot;     &quot;circHSPA4&quot;     
-##  [97] &quot;circIL21R&quot;      &quot;circIMMP1L&quot;     &quot;circINPP5B&quot;     &quot;circINTU&quot;      
-## [101] &quot;circITPA&quot;       &quot;circITSN1&quot;      &quot;circKAT6B&quot;      &quot;circKDM1A&quot;     
-## [105] &quot;circKDM8&quot;       &quot;circKEL&quot;        &quot;circKREMEN1&quot;    &quot;circL3MBTL3&quot;   
-## [109] &quot;circLAMP1&quot;      &quot;circLDLRAD4&quot;    &quot;circLINC00222&quot;  &quot;circLINC00910&quot; 
-## [113] &quot;circLINC02814&quot;  &quot;circLIX1.AS1&quot;   &quot;circLPP&quot;        &quot;circLTBP1&quot;     
-## [117] &quot;circLZIC&quot;       &quot;circMAP3K4&quot;     &quot;circMARCHF8&quot;    &quot;circMAST3&quot;     
-## [121] &quot;circMCM4&quot;       &quot;circMDGA1&quot;      &quot;circMECP2&quot;      &quot;circMED1&quot;      
-## [125] &quot;circMED14&quot;      &quot;circMED4&quot;       &quot;circMFN1&quot;       &quot;circMFN2&quot;      
-## [129] &quot;circMFSD11&quot;     &quot;circMGRN1&quot;      &quot;circMIER2&quot;      &quot;circMLYCD&quot;     
-## [133] &quot;circMON2&quot;       &quot;circMPP5&quot;       &quot;circMTDH&quot;       &quot;circMTMR1&quot;     
-## [137] &quot;circMTMR14&quot;     &quot;circMUC20.OT1&quot;  &quot;circMYO9A&quot;      &quot;circNCAPG2&quot;    
-## [141] &quot;circNCF1C&quot;      &quot;circNEAT1&quot;      &quot;circNIPAL3&quot;     &quot;circNSD1&quot;      
-## [145] &quot;circNUDT2&quot;      &quot;circNUP133&quot;     &quot;circNUP205&quot;     &quot;circNUP35&quot;     
-## [149] &quot;circOGFOD3&quot;     &quot;circPABPC1L&quot;    &quot;circPADI4&quot;      &quot;circPAK2&quot;      
-## [153] &quot;circPARN&quot;       &quot;circPFKP&quot;       &quot;circPHF12&quot;      &quot;circPHF20&quot;     
-## [157] &quot;circPLA2G6&quot;     &quot;circPLCL2&quot;      &quot;circPOC5&quot;       &quot;circPOLA1&quot;     
-## [161] &quot;circPPOX&quot;       &quot;circPTER&quot;       &quot;circPTPN12&quot;     &quot;circRAB21&quot;     
-## [165] &quot;circRAB27A&quot;     &quot;circRABGAP1L&quot;   &quot;circRALGAPA1&quot;   &quot;circRANBP10&quot;   
-## [169] &quot;circRASA1&quot;      &quot;circRASGRF2&quot;    &quot;circREPS2&quot;      &quot;circRFC2&quot;      
-## [173] &quot;circRFX3&quot;       &quot;circRIC8B&quot;      &quot;circRIPK1&quot;      &quot;circRMDN3&quot;     
-## [177] &quot;circRNASEH2B&quot;   &quot;circRNPS1&quot;      &quot;circRPRD1A&quot;     &quot;circRUFY2&quot;     
-## [181] &quot;circSATB1.AS1&quot;  &quot;circSAV1&quot;       &quot;circSCAF11&quot;     &quot;circSCAP&quot;      
-## [185] &quot;circSEC24A&quot;     &quot;circSEPSECS&quot;    &quot;circSETBP1&quot;     &quot;circSGCD&quot;      
-## [189] &quot;circSLC19A1&quot;    &quot;circSLC26A8&quot;    &quot;circSLC38A7&quot;    &quot;circSLC39A10&quot;  
-## [193] &quot;circSLC39A8&quot;    &quot;circSMARCA4&quot;    &quot;circSMARCC1&quot;    &quot;circSMARCD1&quot;   
-## [197] &quot;circSNRNP48&quot;    &quot;circSON&quot;        &quot;circST6GAL2&quot;    &quot;circSTK38&quot;     
-## [201] &quot;circSTK39&quot;      &quot;circSTX6&quot;       &quot;circTASOR2&quot;     &quot;circTBC1D2B&quot;   
-## [205] &quot;circTBC1D32&quot;    &quot;circTFEC&quot;       &quot;circTHOC2&quot;      &quot;circTLK2&quot;      
-## [209] &quot;circTM9SF3&quot;     &quot;circTMEM38B&quot;    &quot;circTNRC6A&quot;     &quot;circTPCN1&quot;     
-## [213] &quot;circTPTE2P5&quot;    &quot;circTPX2&quot;       &quot;circTRABD2A&quot;    &quot;circTRAPPC8&quot;   
-## [217] &quot;circTTLL1&quot;      &quot;circTTN.AS1&quot;    &quot;circTUBGCP5&quot;    &quot;circUBAC2&quot;     
-## [221] &quot;circUBE2E3&quot;     &quot;circUBE2I&quot;      &quot;circUGGT2&quot;      &quot;circUSP54&quot;     
-## [225] &quot;circUTY&quot;        &quot;circVAPA&quot;       &quot;circVPS37A&quot;     &quot;circVRK3&quot;      
-## [229] &quot;circWASHC2A&quot;    &quot;circWDHD1&quot;      &quot;circWIPI2&quot;      &quot;circXRCC1&quot;     
-## [233] &quot;circYPEL1&quot;      &quot;circZFYVE1&quot;     &quot;circZFYVE26&quot;    &quot;circZNF133&quot;    
-## [237] &quot;circZNF346&quot;     &quot;circZNF81&quot;      &quot;circZSWIM6&quot;</code></pre>
-<pre class="r"><code># Ordeno por valor absoluto de coeficientes y elimino el intercepto.
-predictoresLasso_Sort &lt;- arrange(predictoresLasso, desc(abs(coeficientes))) %&gt;% filter(Predictores != &quot;(Intercept)&quot;)</code></pre>
+
+# Ordeno por valor absoluto de coeficientes y elimino el intercepto.
+predictoresLasso_Sort &lt;- arrange(predictoresLasso, desc(abs(Coeficientes))) %&gt;% filter(Predictores != &quot;(Intercept)&quot;)
+
+kbl(predictoresLasso_Sort, row.names = FALSE, format = &quot;html&quot;, align = &quot;c&quot;, centering = TRUE, booktabs = TRUE) %&gt;%
+  kable_paper() %&gt;%
+  scroll_box(width = &quot;100%&quot;, height = &quot;350px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%; ">
+<table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:center;position: sticky; top:0; background-color: #FFFFFF;">
+Predictores
+</th>
+<th style="text-align:center;position: sticky; top:0; background-color: #FFFFFF;">
+Coeficientes
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+circMFN2
+</td>
+<td style="text-align:center;">
+0.2679364
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCPT1A
+</td>
+<td style="text-align:center;">
+-0.2626509
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circERBB2
+</td>
+<td style="text-align:center;">
+0.2507463
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCF1C
+</td>
+<td style="text-align:center;">
+0.2356374
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEDC3
+</td>
+<td style="text-align:center;">
+0.2275681
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRFC2
+</td>
+<td style="text-align:center;">
+0.2079059
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRUFY2
+</td>
+<td style="text-align:center;">
+-0.1975767
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHERC2P9
+</td>
+<td style="text-align:center;">
+-0.1907982
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNPS1
+</td>
+<td style="text-align:center;">
+-0.1790926
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRAPPC8
+</td>
+<td style="text-align:center;">
+-0.1638791
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMLYCD
+</td>
+<td style="text-align:center;">
+0.1571992
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSON
+</td>
+<td style="text-align:center;">
+-0.1564492
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEXTL3
+</td>
+<td style="text-align:center;">
+0.1535734
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMPP5
+</td>
+<td style="text-align:center;">
+-0.1480958
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMFN1
+</td>
+<td style="text-align:center;">
+0.1439356
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDDX50
+</td>
+<td style="text-align:center;">
+0.1429521
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMGRN1
+</td>
+<td style="text-align:center;">
+0.1399368
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTM9SF3
+</td>
+<td style="text-align:center;">
+-0.1385569
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPFKP
+</td>
+<td style="text-align:center;">
+0.1358736
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPAK2
+</td>
+<td style="text-align:center;">
+0.1298198
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCARD6
+</td>
+<td style="text-align:center;">
+-0.1296163
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZSWIM6
+</td>
+<td style="text-align:center;">
+-0.1292492
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEPDR1
+</td>
+<td style="text-align:center;">
+0.1282799
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNASEH2B
+</td>
+<td style="text-align:center;">
+-0.1275560
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circIL21R
+</td>
+<td style="text-align:center;">
+-0.1271976
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPLCL2
+</td>
+<td style="text-align:center;">
+-0.1225999
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPX2
+</td>
+<td style="text-align:center;">
+-0.1190778
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNEAT1
+</td>
+<td style="text-align:center;">
+-0.1177573
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDEPDC1
+</td>
+<td style="text-align:center;">
+-0.1176333
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circELK4
+</td>
+<td style="text-align:center;">
+-0.1162632
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTLK2
+</td>
+<td style="text-align:center;">
+-0.1157450
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLAMP1
+</td>
+<td style="text-align:center;">
+-0.1157443
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSEC24A
+</td>
+<td style="text-align:center;">
+0.1149301
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCRY1
+</td>
+<td style="text-align:center;">
+-0.1144555
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circB4GALT5
+</td>
+<td style="text-align:center;">
+-0.1140994
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKDM1A
+</td>
+<td style="text-align:center;">
+-0.1119526
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circENGASE
+</td>
+<td style="text-align:center;">
+-0.1086233
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHSPA4
+</td>
+<td style="text-align:center;">
+0.1069420
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRABD2A
+</td>
+<td style="text-align:center;">
+-0.1066016
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMDGA1
+</td>
+<td style="text-align:center;">
+-0.1041198
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMAST3
+</td>
+<td style="text-align:center;">
+0.1017870
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circOGFOD3
+</td>
+<td style="text-align:center;">
+-0.1015882
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRIPK1
+</td>
+<td style="text-align:center;">
+0.1015510
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCLIC2
+</td>
+<td style="text-align:center;">
+0.1013523
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLIX1.AS1
+</td>
+<td style="text-align:center;">
+-0.1007964
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCNOT2
+</td>
+<td style="text-align:center;">
+-0.0996175
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRIC8B
+</td>
+<td style="text-align:center;">
+0.0976411
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCATSPERG
+</td>
+<td style="text-align:center;">
+0.0969526
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circARMH3
+</td>
+<td style="text-align:center;">
+0.0967901
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGGA3
+</td>
+<td style="text-align:center;">
+0.0959815
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPOC5
+</td>
+<td style="text-align:center;">
+0.0945635
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNIPAL3
+</td>
+<td style="text-align:center;">
+0.0937275
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATF7IP
+</td>
+<td style="text-align:center;">
+0.0910326
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circREPS2
+</td>
+<td style="text-align:center;">
+0.0903682
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSTK39
+</td>
+<td style="text-align:center;">
+0.0897983
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHACD1
+</td>
+<td style="text-align:center;">
+-0.0887796
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF133
+</td>
+<td style="text-align:center;">
+0.0885922
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPLA2G6
+</td>
+<td style="text-align:center;">
+-0.0869359
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPTE2P5
+</td>
+<td style="text-align:center;">
+-0.0861279
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHDAC9
+</td>
+<td style="text-align:center;">
+-0.0835491
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFTO
+</td>
+<td style="text-align:center;">
+0.0812971
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKRD13C
+</td>
+<td style="text-align:center;">
+0.0810465
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFAM120B
+</td>
+<td style="text-align:center;">
+-0.0807669
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRALGAPA1
+</td>
+<td style="text-align:center;">
+-0.0802951
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKEL
+</td>
+<td style="text-align:center;">
+0.0802557
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPADI4
+</td>
+<td style="text-align:center;">
+0.0784554
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPOLA1
+</td>
+<td style="text-align:center;">
+-0.0778196
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAB21
+</td>
+<td style="text-align:center;">
+-0.0777326
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKAR
+</td>
+<td style="text-align:center;">
+-0.0776048
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUP205
+</td>
+<td style="text-align:center;">
+-0.0774800
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZFYVE1
+</td>
+<td style="text-align:center;">
+0.0773328
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPTPN12
+</td>
+<td style="text-align:center;">
+0.0762283
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBE2E3
+</td>
+<td style="text-align:center;">
+-0.0758866
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRASGRF2
+</td>
+<td style="text-align:center;">
+-0.0758542
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSATB1.AS1
+</td>
+<td style="text-align:center;">
+-0.0741934
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMAP3K4
+</td>
+<td style="text-align:center;">
+0.0726995
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circABCB7
+</td>
+<td style="text-align:center;">
+0.0721092
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRPRD1A
+</td>
+<td style="text-align:center;">
+0.0708894
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBE2I
+</td>
+<td style="text-align:center;">
+0.0703085
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAPOOL
+</td>
+<td style="text-align:center;">
+0.0687437
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCNOT1
+</td>
+<td style="text-align:center;">
+-0.0684209
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATP8B4
+</td>
+<td style="text-align:center;">
+0.0680235
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPHF12
+</td>
+<td style="text-align:center;">
+0.0675160
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTNRC6A
+</td>
+<td style="text-align:center;">
+0.0662657
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCD83
+</td>
+<td style="text-align:center;">
+-0.0658544
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMON2
+</td>
+<td style="text-align:center;">
+-0.0654083
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCEP350
+</td>
+<td style="text-align:center;">
+-0.0641725
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDCTD
+</td>
+<td style="text-align:center;">
+-0.0634123
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKREMEN1
+</td>
+<td style="text-align:center;">
+-0.0617638
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPHF20
+</td>
+<td style="text-align:center;">
+0.0601217
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC02814
+</td>
+<td style="text-align:center;">
+0.0595506
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPCN1
+</td>
+<td style="text-align:center;">
+0.0592741
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUTY
+</td>
+<td style="text-align:center;">
+0.0590600
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKRD46
+</td>
+<td style="text-align:center;">
+-0.0575730
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWASHC2A
+</td>
+<td style="text-align:center;">
+0.0568170
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFAN1
+</td>
+<td style="text-align:center;">
+0.0567566
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLPP
+</td>
+<td style="text-align:center;">
+-0.0558909
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMECP2
+</td>
+<td style="text-align:center;">
+0.0558411
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circITSN1
+</td>
+<td style="text-align:center;">
+-0.0553822
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSCAF11
+</td>
+<td style="text-align:center;">
+0.0529279
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF81
+</td>
+<td style="text-align:center;">
+0.0527365
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSTX6
+</td>
+<td style="text-align:center;">
+0.0526060
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMFSD11
+</td>
+<td style="text-align:center;">
+-0.0524867
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRFX3
+</td>
+<td style="text-align:center;">
+0.0519906
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTMEM38B
+</td>
+<td style="text-align:center;">
+-0.0501913
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFAM13A
+</td>
+<td style="text-align:center;">
+-0.0501207
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circST6GAL2
+</td>
+<td style="text-align:center;">
+0.0492716
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTTN.AS1
+</td>
+<td style="text-align:center;">
+0.0492116
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSCAP
+</td>
+<td style="text-align:center;">
+-0.0481921
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF346
+</td>
+<td style="text-align:center;">
+0.0479937
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLTBP1
+</td>
+<td style="text-align:center;">
+0.0478491
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDCUN1D1
+</td>
+<td style="text-align:center;">
+0.0476212
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFBXL17
+</td>
+<td style="text-align:center;">
+0.0472805
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTMR14
+</td>
+<td style="text-align:center;">
+0.0472072
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDMC1
+</td>
+<td style="text-align:center;">
+-0.0471741
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMIER2
+</td>
+<td style="text-align:center;">
+0.0466057
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTMR1
+</td>
+<td style="text-align:center;">
+-0.0463412
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEAF2
+</td>
+<td style="text-align:center;">
+0.0457166
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTBC1D2B
+</td>
+<td style="text-align:center;">
+0.0455697
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCEP295
+</td>
+<td style="text-align:center;">
+-0.0453998
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTUBGCP5
+</td>
+<td style="text-align:center;">
+0.0445530
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGIN1
+</td>
+<td style="text-align:center;">
+0.0422147
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED4
+</td>
+<td style="text-align:center;">
+-0.0413408
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circABCA5
+</td>
+<td style="text-align:center;">
+0.0412786
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHSPA14
+</td>
+<td style="text-align:center;">
+0.0412659
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circVRK3
+</td>
+<td style="text-align:center;">
+-0.0408597
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUDT2
+</td>
+<td style="text-align:center;">
+-0.0401083
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC38A7
+</td>
+<td style="text-align:center;">
+0.0394260
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBRWD3
+</td>
+<td style="text-align:center;">
+0.0383234
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHBS1L
+</td>
+<td style="text-align:center;">
+0.0382490
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circALS2
+</td>
+<td style="text-align:center;">
+0.0381470
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPTER
+</td>
+<td style="text-align:center;">
+0.0376340
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTASOR2
+</td>
+<td style="text-align:center;">
+0.0374910
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATP13A1
+</td>
+<td style="text-align:center;">
+-0.0368354
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC00222
+</td>
+<td style="text-align:center;">
+0.0365469
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circACTR10
+</td>
+<td style="text-align:center;">
+0.0363662
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circXRCC1
+</td>
+<td style="text-align:center;">
+0.0363536
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGPR107
+</td>
+<td style="text-align:center;">
+0.0343431
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circL3MBTL3
+</td>
+<td style="text-align:center;">
+0.0342987
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMYO9A
+</td>
+<td style="text-align:center;">
+0.0333472
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFNDC3A
+</td>
+<td style="text-align:center;">
+-0.0333122
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circITPA
+</td>
+<td style="text-align:center;">
+-0.0329052
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED1
+</td>
+<td style="text-align:center;">
+0.0328582
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFANCM
+</td>
+<td style="text-align:center;">
+-0.0322452
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSMARCC1
+</td>
+<td style="text-align:center;">
+-0.0322260
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAKAP8L
+</td>
+<td style="text-align:center;">
+0.0318430
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circVPS37A
+</td>
+<td style="text-align:center;">
+-0.0309507
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNSD1
+</td>
+<td style="text-align:center;">
+-0.0298640
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circADK
+</td>
+<td style="text-align:center;">
+-0.0298469
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTTLL1
+</td>
+<td style="text-align:center;">
+-0.0296915
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDOT1L
+</td>
+<td style="text-align:center;">
+0.0295265
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLDLRAD4
+</td>
+<td style="text-align:center;">
+0.0292447
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRMDN3
+</td>
+<td style="text-align:center;">
+0.0284255
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCCT3
+</td>
+<td style="text-align:center;">
+-0.0275261
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPPOX
+</td>
+<td style="text-align:center;">
+-0.0274876
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGARS1
+</td>
+<td style="text-align:center;">
+-0.0272250
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCOA1
+</td>
+<td style="text-align:center;">
+0.0268478
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBTBD7
+</td>
+<td style="text-align:center;">
+0.0264229
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC26A8
+</td>
+<td style="text-align:center;">
+0.0259928
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEIF3B
+</td>
+<td style="text-align:center;">
+-0.0257578
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSAV1
+</td>
+<td style="text-align:center;">
+-0.0252743
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUP35
+</td>
+<td style="text-align:center;">
+0.0252560
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSETBP1
+</td>
+<td style="text-align:center;">
+-0.0245519
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWIPI2
+</td>
+<td style="text-align:center;">
+0.0242866
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRANBP10
+</td>
+<td style="text-align:center;">
+-0.0242848
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEFL1
+</td>
+<td style="text-align:center;">
+-0.0241801
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circIMMP1L
+</td>
+<td style="text-align:center;">
+-0.0239032
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAB27A
+</td>
+<td style="text-align:center;">
+0.0238559
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFRMD4A
+</td>
+<td style="text-align:center;">
+0.0238083
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTHOC2
+</td>
+<td style="text-align:center;">
+-0.0235336
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circINPP5B
+</td>
+<td style="text-align:center;">
+-0.0226255
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC19A1
+</td>
+<td style="text-align:center;">
+0.0225195
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRASA1
+</td>
+<td style="text-align:center;">
+-0.0225024
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circALG8
+</td>
+<td style="text-align:center;">
+0.0218963
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMARCHF8
+</td>
+<td style="text-align:center;">
+-0.0216740
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEPSTI1
+</td>
+<td style="text-align:center;">
+0.0213441
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFRY
+</td>
+<td style="text-align:center;">
+-0.0213258
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCLIP4
+</td>
+<td style="text-align:center;">
+-0.0209546
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLZIC
+</td>
+<td style="text-align:center;">
+0.0206004
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFUT8
+</td>
+<td style="text-align:center;">
+-0.0204816
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSTK38
+</td>
+<td style="text-align:center;">
+-0.0203638
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBTN2A2
+</td>
+<td style="text-align:center;">
+0.0202642
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRABGAP1L
+</td>
+<td style="text-align:center;">
+-0.0199561
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUSP54
+</td>
+<td style="text-align:center;">
+0.0195989
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circINTU
+</td>
+<td style="text-align:center;">
+0.0194589
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUGGT2
+</td>
+<td style="text-align:center;">
+-0.0184617
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMCM4
+</td>
+<td style="text-align:center;">
+-0.0180415
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSMARCD1
+</td>
+<td style="text-align:center;">
+0.0179553
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTBC1D32
+</td>
+<td style="text-align:center;">
+0.0177036
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDAAM1
+</td>
+<td style="text-align:center;">
+-0.0166219
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATXN1
+</td>
+<td style="text-align:center;">
+0.0164300
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZFYVE26
+</td>
+<td style="text-align:center;">
+0.0162168
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCTDSPL2
+</td>
+<td style="text-align:center;">
+-0.0161788
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAC118549.1
+</td>
+<td style="text-align:center;">
+-0.0161064
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAP1G1
+</td>
+<td style="text-align:center;">
+0.0158447
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMUC20.OT1
+</td>
+<td style="text-align:center;">
+-0.0148029
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCOMMD10
+</td>
+<td style="text-align:center;">
+0.0145784
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circACER3
+</td>
+<td style="text-align:center;">
+-0.0137697
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSGCD
+</td>
+<td style="text-align:center;">
+0.0137672
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCAPG2
+</td>
+<td style="text-align:center;">
+-0.0135825
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKDM8
+</td>
+<td style="text-align:center;">
+-0.0134639
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHNRNPM
+</td>
+<td style="text-align:center;">
+0.0132314
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFIRRE
+</td>
+<td style="text-align:center;">
+0.0128965
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBCL2
+</td>
+<td style="text-align:center;">
+-0.0114616
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCCS
+</td>
+<td style="text-align:center;">
+0.0112231
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWDHD1
+</td>
+<td style="text-align:center;">
+-0.0110624
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCNOT9
+</td>
+<td style="text-align:center;">
+-0.0109515
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCASP8AP2
+</td>
+<td style="text-align:center;">
+0.0105955
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCSTF3
+</td>
+<td style="text-align:center;">
+-0.0103441
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGYG2P1
+</td>
+<td style="text-align:center;">
+0.0099208
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCLEC16A
+</td>
+<td style="text-align:center;">
+0.0098386
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTDH
+</td>
+<td style="text-align:center;">
+-0.0095797
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSMARCA4
+</td>
+<td style="text-align:center;">
+-0.0089238
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBAC2
+</td>
+<td style="text-align:center;">
+-0.0088302
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDIAPH3
+</td>
+<td style="text-align:center;">
+-0.0087839
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED14
+</td>
+<td style="text-align:center;">
+-0.0085433
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEXO1
+</td>
+<td style="text-align:center;">
+-0.0075693
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circYPEL1
+</td>
+<td style="text-align:center;">
+-0.0075419
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTFEC
+</td>
+<td style="text-align:center;">
+-0.0075314
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUP133
+</td>
+<td style="text-align:center;">
+-0.0074920
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCDC14B
+</td>
+<td style="text-align:center;">
+-0.0074502
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAP3D1
+</td>
+<td style="text-align:center;">
+-0.0070286
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDIAPH1
+</td>
+<td style="text-align:center;">
+-0.0069965
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC39A8
+</td>
+<td style="text-align:center;">
+-0.0069329
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPABPC1L
+</td>
+<td style="text-align:center;">
+0.0069175
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSEPSECS
+</td>
+<td style="text-align:center;">
+0.0060529
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circVAPA
+</td>
+<td style="text-align:center;">
+0.0058829
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC39A10
+</td>
+<td style="text-align:center;">
+-0.0049941
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circERICH1
+</td>
+<td style="text-align:center;">
+0.0037003
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPARN
+</td>
+<td style="text-align:center;">
+-0.0035053
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSNRNP48
+</td>
+<td style="text-align:center;">
+0.0033475
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circB3GLCT
+</td>
+<td style="text-align:center;">
+-0.0026569
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circARL6IP6
+</td>
+<td style="text-align:center;">
+-0.0018220
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKAT6B
+</td>
+<td style="text-align:center;">
+0.0013514
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBRAF
+</td>
+<td style="text-align:center;">
+-0.0009768
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC00910
+</td>
+<td style="text-align:center;">
+-0.0005349
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAC139795.1
+</td>
+<td style="text-align:center;">
+0.0002377
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDHRSX
+</td>
+<td style="text-align:center;">
+0.0001618
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 </div>
 <div id="modelos-de-regresión-lasso-con-balanceo-de-clases" class="section level1">
 <h1>Modelos de regresión Lasso con balanceo de clases</h1>
-<div id="balanceo-de-las-clases" class="section level2">
-<h2>Balanceo de las clases</h2>
-<p>Dividimos el conjunto de datos entre clases.</p>
+<p>En este apartado se van a generar modelos predictivos basado en Lasso
+a los que previamente se les habrá realizado un muestreo con el fin de
+equilibrar en gran medida el número de muestras pertenecientes a cada
+clase. Con esto se pretende reducir el sesgo que el modelo pudiera tener
+hacia la clase mayoritaria (<em>Case</em>), mejorando de esta manera el
+rendimiento al clasificar miembros de la clase minoritaria
+(<em>Control</em>).</p>
+<p>Como paso previo vamos a generar dos subconjuntos dividiendo nuestros
+datos de entrenamiento según pertenezcan a la clase <em>Case</em> o
+<em>Control</em>.</p>
+<p>Es importante no utilizar el conjunto original, ya que al realizar
+sobremuestreo vamos a multiplicar algunas muestras y en la posterior
+división en conjuntos de entrenamiento y test podrían acabar muestras
+iguales en ambos conjuntos, de manera que el rendimiento obtenido no
+sería válido.</p>
 <pre class="r"><code>ClaseMayoritariadata &lt;- subset(train, train$Ca_Co_Last == &quot;Case&quot;)
 ClaseMinoritariadata &lt;- subset(train, train$Ca_Co_Last == &quot;Control&quot;)</code></pre>
-</div>
-<div id="ajuste-del-modelo-utilizando-sobremuestreo-de-la-clase-minoritaria" class="section level2">
-<h2>Ajuste del modelo utilizando sobremuestreo de la clase
+<div id="modelo-de-regresión-lasso-con-sobremuestreo-de-la-clase-minoritaria" class="section level2">
+<h2>Modelo de regresión Lasso con sobremuestreo de la clase
 minoritaria</h2>
-<pre class="r"><code>oversamplingDig &lt;- ClaseMinoritariadata[sample(nrow(ClaseMinoritariadata), replace = TRUE, size = 0.8*nrow(ClaseMayoritariadata)), ]
+<div id="ajuste-del-modelo-1" class="section level3">
+<h3>Ajuste del modelo</h3>
+<p>En primer lugar vamos a generar el modelo utilizando datos
+sobremuestreados de la clase minoritaria, de manera que se reduzca la
+diferencia entre ambas clases a la vez que no perdemos información por
+dejar algunas muestras sin utilizar.</p>
+<p>Al generar el conjunto se utiliza el factor 0.8 en <em>size</em> que
+indica que la muestra será aproximadamente el 80% del tamaño de la clase
+mayoritaria, lo que se traduce en 431 miembros de la clase mayoritaria y
+344 de la minoritaria.</p>
+<p>Posteriormente se unen el conjunto sobremuestreado con el de la clase
+mayoritaria.</p>
+<pre class="r"><code>oversampling &lt;- ClaseMinoritariadata[sample(nrow(ClaseMinoritariadata), replace = TRUE, size = 0.8*nrow(ClaseMayoritariadata)), ]
 
 # Combinar la clase mayoritaria submuestreada con la clase minoritaria
-Train_oversampling_balanced &lt;- rbind(ClaseMayoritariadata, oversamplingDig)
+Train_oversampling_balanced &lt;- rbind(ClaseMayoritariadata, oversampling)
 table(Train_oversampling_balanced$Ca_Co_Last)</code></pre>
 <pre><code>## 
 ##    Case Control 
 ##     431     344</code></pre>
+<p>A continuación se separa el vector que contiene la variable respuesta
+y se calcula el valor de <span class="math inline">\(\lambda\)</span>,
+que a diferencia del caso anterior, utiliza la métrica <em>Deviance</em>
+a la hora de escoger el mejor valor. Este cambio se realizó ya que se
+observó que los resultados predictivos mejoraban con el cambio de
+métrica.</p>
+<p>En este caso el valor de <span class="math inline">\(\lambda\)</span>
+obtenido es de <em>0.01291431</em>, ligeramente inferior al obtenido en
+el modelo Lasso sin sobremuestreo, por lo que la regularización será
+menos estricta.</p>
 <pre class="r"><code># Separamos los predictores y la respuesta en el conjunto de train.
 
 Traindata_x = subset(Train_oversampling_balanced, select = -c(Ca_Co_Last,sex,age_at_baseline))
@@ -776,13 +3101,25 @@ plot(cvLassodata)</code></pre>
 <pre class="r"><code>Lambda &lt;- cvLassodata$lambda.min
 Lambda</code></pre>
 <pre><code>## [1] 0.01291431</code></pre>
-<div id="validación-1" class="section level3">
-<h3>Validación</h3>
+<p>Utilizando este valor de <span class="math inline">\(\lambda\)</span>
+ajustamos el entrenamiento del modelo, el cual contendrá 240 predictores
+tal y como se muestra.</p>
 <pre class="r"><code>lasso.mod.OverS &lt;- glmnet(Traindata_x, Traindata_y, alpha = 1,
     lambda = Lambda, family = &quot;binomial&quot;)
-
-
-Testdata_x_Mat &lt;- data.matrix(x.test)
+lasso.mod.OverS</code></pre>
+<pre><code>## 
+## Call:  glmnet(x = Traindata_x, y = Traindata_y, family = &quot;binomial&quot;,      alpha = 1, lambda = Lambda) 
+## 
+##    Df  %Dev  Lambda
+## 1 240 64.48 0.01291</code></pre>
+</div>
+<div id="validación-1" class="section level3">
+<h3>Validación</h3>
+<p>La validación frente al conjunto de test se lleva a cabo de la misma
+manera que en el caso anterior. Los resultados obtenidos en este caso
+son muy similares, por lo que aplicando el mismo criterio, los
+predictores seleccionados serán considerados en siguientes análisis.</p>
+<pre class="r"><code>Testdata_x_Mat &lt;- data.matrix(x.test)
 predicciones &lt;- as.data.frame(predict(lasso.mod.OverS, newx = Testdata_x_Mat, s = &quot;lambda.min&quot;, type = &quot;response&quot;))
 
 corte &lt;- 0.5
@@ -826,6 +3163,8 @@ confusion_matrix_OverS</code></pre>
 </div>
 <div id="características-seleccionadas-1" class="section level3">
 <h3>Características seleccionadas</h3>
+<p>En cuanto a los predictores seleccionados, se les aplicará el mismo
+tratamiento que anteriormente.</p>
 <pre class="r"><code># Extraigo los coeficientes:
 coeficientes_lasso &lt;- coef(lasso.mod.OverS, s = &quot;lambda.min&quot;)
 
@@ -847,76 +3186,1965 @@ predictoresLasso.over &lt;- df_coeficientes_lasso[indices,]
 
 # Ordeno por valor absoluto de coeficientes y elimino el intercepto.
 predictoresLasso.over &lt;- arrange(predictoresLasso.over, desc(abs(coeficientes))) %&gt;% filter(Predictores != &quot;(Intercept)&quot;)
-predictoresLasso.over$Predictores</code></pre>
-<pre><code>##   [1] &quot;circFAM120B&quot;    &quot;circREPS2&quot;      &quot;circCPT1A&quot;      &quot;circCATSPERG&quot;  
-##   [5] &quot;circEDC3&quot;       &quot;circRFC2&quot;       &quot;circPLCL2&quot;      &quot;circEXTL3&quot;     
-##   [9] &quot;circDDX50&quot;      &quot;circRALGAPA1&quot;   &quot;circANKRD17&quot;    &quot;circTRABD2A&quot;   
-##  [13] &quot;circSLC24A4&quot;    &quot;circRIC8B&quot;      &quot;circNSD1&quot;       &quot;circSON&quot;       
-##  [17] &quot;circIL21R&quot;      &quot;circTBC1D2B&quot;    &quot;circCRY1&quot;       &quot;circFTO&quot;       
-##  [21] &quot;circMDGA1&quot;      &quot;circDCUN1D1&quot;    &quot;circTLK2&quot;       &quot;circLIX1.AS1&quot;  
-##  [25] &quot;circHSPA14&quot;     &quot;circPAK2&quot;       &quot;circMBP&quot;        &quot;circMLYCD&quot;     
-##  [29] &quot;circHACD1&quot;      &quot;circARL6IP6&quot;    &quot;circENGASE&quot;     &quot;circPTPN12&quot;    
-##  [33] &quot;circAKR1E2&quot;     &quot;circSLC8A3&quot;     &quot;circTASOR2&quot;     &quot;circMFN2&quot;      
-##  [37] &quot;circCERS6&quot;      &quot;circEPDR1&quot;      &quot;circZNFX1&quot;      &quot;circYPEL2&quot;     
-##  [41] &quot;circLDLRAD4&quot;    &quot;circSGCD&quot;       &quot;circHSPA4&quot;      &quot;circCTC1&quot;      
-##  [45] &quot;circATP8B4&quot;     &quot;circFRMD4A&quot;     &quot;circHERC2P9&quot;    &quot;circKDM1A&quot;     
-##  [49] &quot;circOGFOD3&quot;     &quot;circSATB1.AS1&quot;  &quot;circMTDH&quot;       &quot;circMED4&quot;      
-##  [53] &quot;circANKRD13C&quot;   &quot;circGGA3&quot;       &quot;circDEPDC1&quot;     &quot;circEIF3B&quot;     
-##  [57] &quot;circARMH3&quot;      &quot;circPCED1B&quot;     &quot;circTM9SF3&quot;     &quot;circTBC1D32&quot;   
-##  [61] &quot;circMTMR1&quot;      &quot;circFANCM&quot;      &quot;circUBE2E3&quot;     &quot;circPFKP&quot;      
-##  [65] &quot;circREPS1&quot;      &quot;circCCT3&quot;       &quot;circHDAC9&quot;      &quot;circRAB27A&quot;    
-##  [69] &quot;circVPS37A&quot;     &quot;circPLA2G6&quot;     &quot;circTPCN1&quot;      &quot;circAC021851.1&quot;
-##  [73] &quot;circALS2&quot;       &quot;circMFN1&quot;       &quot;circMAP3K4&quot;     &quot;circERBB2&quot;     
-##  [77] &quot;circANKRD26&quot;    &quot;circCDC14B&quot;     &quot;circRUFY2&quot;      &quot;circCARD6&quot;     
-##  [81] &quot;circAPOOL&quot;      &quot;circMPP5&quot;       &quot;circEPSTI1&quot;     &quot;circVRK3&quot;      
-##  [85] &quot;circTNPO2&quot;      &quot;circRANBP10&quot;    &quot;circTRAPPC8&quot;    &quot;circTFEC&quot;      
-##  [89] &quot;circMGRN1&quot;      &quot;circNEDD1&quot;      &quot;circRFX3&quot;       &quot;circMETTL8&quot;    
-##  [93] &quot;circLINC02814&quot;  &quot;circPADI4&quot;      &quot;circDIAPH1&quot;     &quot;circFOXM1&quot;     
-##  [97] &quot;circSAV1&quot;       &quot;circCLIC2&quot;      &quot;circPPOX&quot;       &quot;circPOLA1&quot;     
-## [101] &quot;circFBXL17&quot;     &quot;circNCR1&quot;       &quot;circZNF516&quot;     &quot;circELK4&quot;      
-## [105] &quot;circST6GAL2&quot;    &quot;circKREMEN1&quot;    &quot;circTTLL5&quot;      &quot;circRPRD1A&quot;    
-## [109] &quot;circABCB7&quot;      &quot;circUGGT2&quot;      &quot;circFAM13A&quot;     &quot;circUBE2I&quot;     
-## [113] &quot;circNCF1C&quot;      &quot;circATF1&quot;       &quot;circSLC20A2&quot;    &quot;circLINC00222&quot; 
-## [117] &quot;circRNASEH2B&quot;   &quot;circATF7IP&quot;     &quot;circPOC5&quot;       &quot;circMON2&quot;      
-## [121] &quot;circPHF20&quot;      &quot;circKDM4C&quot;      &quot;circMDM2&quot;       &quot;circUBE2Q2&quot;    
-## [125] &quot;circRNPS1&quot;      &quot;circEEA1&quot;       &quot;circSPG7&quot;       &quot;circAXIN1&quot;     
-## [129] &quot;circTPX2&quot;       &quot;circMUC20.OT1&quot;  &quot;circLINC00910&quot;  &quot;circSLC26A8&quot;   
-## [133] &quot;circHIP1&quot;       &quot;circKNOP1&quot;      &quot;circRAB21&quot;      &quot;circMFSD11&quot;    
-## [137] &quot;circATF7IP2&quot;    &quot;circLAMP1&quot;      &quot;circPHF12&quot;      &quot;circMAST3&quot;     
-## [141] &quot;circMED14&quot;      &quot;circMMS19&quot;      &quot;circAFF2&quot;       &quot;circNUP88&quot;     
-## [145] &quot;circTNRC6A&quot;     &quot;circSTK39&quot;      &quot;circEXT2&quot;       &quot;circPSMD14&quot;    
-## [149] &quot;circSTXBP4&quot;     &quot;circRAB11FIP1&quot;  &quot;circPRIMPOL&quot;    &quot;circWIPI2&quot;     
-## [153] &quot;circRSBN1L&quot;     &quot;circSLC39A10&quot;   &quot;circOGG1&quot;       &quot;circERVMER61.1&quot;
-## [157] &quot;circATXN1&quot;      &quot;circKEL&quot;        &quot;circARIH2&quot;      &quot;circEFCAB14&quot;   
-## [161] &quot;circFBXO30&quot;     &quot;circZSWIM6&quot;     &quot;circSMARCA4&quot;    &quot;circCNOT2&quot;     
-## [165] &quot;circPOLQ&quot;       &quot;circHNRNPM&quot;     &quot;circREL&quot;        &quot;circHBS1L&quot;     
-## [169] &quot;circTP53BP2&quot;    &quot;circCHST12&quot;     &quot;circRNF115&quot;     &quot;circEFL1&quot;      
-## [173] &quot;circMIER2&quot;      &quot;circDMC1&quot;       &quot;circHERC2P3&quot;    &quot;circMESD&quot;      
-## [177] &quot;circTRNT1&quot;      &quot;circGPATCH1&quot;    &quot;circAC139795.1&quot; &quot;circNXPE3&quot;     
-## [181] &quot;circCOMMD10&quot;    &quot;circCDC27&quot;      &quot;circJADE1&quot;      &quot;circUSP54&quot;     
-## [185] &quot;circZNF133&quot;     &quot;circPDLIM5&quot;     &quot;circCEP350&quot;     &quot;circCOPS7B&quot;    
-## [189] &quot;circLCLAT1&quot;     &quot;circMAPK1&quot;      &quot;circRAD17&quot;      &quot;circPAFAH1B2&quot;  
-## [193] &quot;circAC114755.5&quot; &quot;circNCAPH&quot;      &quot;circMED27&quot;      &quot;circDEPDC1B&quot;   
-## [197] &quot;circKAT6B&quot;      &quot;circNAPB&quot;       &quot;circADAMTS17&quot;   &quot;circB4GALT5&quot;   
-## [201] &quot;circCCS&quot;        &quot;circIRAK3&quot;      &quot;circSLC7A7&quot;     &quot;circCNOT1&quot;     
-## [205] &quot;circWASHC2A&quot;    &quot;circINPP5B&quot;     &quot;circSLC7A6&quot;     &quot;circTPTE2P5&quot;   
-## [209] &quot;circTTC13&quot;      &quot;circZNF766&quot;     &quot;circDBP&quot;        &quot;circCEP120&quot;    
-## [213] &quot;circUSP48&quot;      &quot;circRABGAP1L&quot;   &quot;circRCAN3&quot;      &quot;circWASHC2C&quot;   
-## [217] &quot;circNUDT2&quot;      &quot;circCENPE&quot;      &quot;circFRA10AC1&quot;   &quot;circNUP205&quot;    
-## [221] &quot;circATRX&quot;       &quot;circTBC1D22B&quot;   &quot;circSEC24A&quot;     &quot;circTRIT1&quot;     
-## [225] &quot;circCCDC88A&quot;    &quot;circECPAS&quot;      &quot;circTGS1&quot;       &quot;circCD83&quot;      
-## [229] &quot;circUBR3&quot;       &quot;circBRF1&quot;       &quot;circNCOA6&quot;      &quot;circENOPH1&quot;    
-## [233] &quot;circPPWD1&quot;      &quot;circZBTB24&quot;     &quot;circDOP1A&quot;      &quot;circMTMR14&quot;    
-## [237] &quot;circPTBP3&quot;      &quot;circRTN4&quot;       &quot;circRNF144A&quot;    &quot;circEXOC6&quot;</code></pre>
+
+kbl(predictoresLasso.over, row.names = FALSE, format = &quot;html&quot;, align = &quot;c&quot;, centering = TRUE, booktabs = TRUE) %&gt;%
+  kable_paper() %&gt;%
+  scroll_box(width = &quot;100%&quot;, height = &quot;350px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:350px; overflow-x: scroll; width:100%; ">
+<table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:center;position: sticky; top:0; background-color: #FFFFFF;">
+Predictores
+</th>
+<th style="text-align:center;position: sticky; top:0; background-color: #FFFFFF;">
+coeficientes
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center;">
+circFAM120B
+</td>
+<td style="text-align:center;">
+-0.3221995
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circREPS2
+</td>
+<td style="text-align:center;">
+0.3056394
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCPT1A
+</td>
+<td style="text-align:center;">
+-0.2937163
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCATSPERG
+</td>
+<td style="text-align:center;">
+0.2710762
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEDC3
+</td>
+<td style="text-align:center;">
+0.2621675
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRFC2
+</td>
+<td style="text-align:center;">
+0.2375609
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPLCL2
+</td>
+<td style="text-align:center;">
+-0.2158144
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEXTL3
+</td>
+<td style="text-align:center;">
+0.2011833
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDDX50
+</td>
+<td style="text-align:center;">
+0.1951612
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRALGAPA1
+</td>
+<td style="text-align:center;">
+-0.1871876
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKRD17
+</td>
+<td style="text-align:center;">
+-0.1814777
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRABD2A
+</td>
+<td style="text-align:center;">
+-0.1810423
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC24A4
+</td>
+<td style="text-align:center;">
+-0.1802810
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRIC8B
+</td>
+<td style="text-align:center;">
+0.1760425
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNSD1
+</td>
+<td style="text-align:center;">
+-0.1759755
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSON
+</td>
+<td style="text-align:center;">
+-0.1736721
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circIL21R
+</td>
+<td style="text-align:center;">
+-0.1695711
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTBC1D2B
+</td>
+<td style="text-align:center;">
+0.1678682
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCRY1
+</td>
+<td style="text-align:center;">
+-0.1662564
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFTO
+</td>
+<td style="text-align:center;">
+0.1652804
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMDGA1
+</td>
+<td style="text-align:center;">
+-0.1650775
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDCUN1D1
+</td>
+<td style="text-align:center;">
+0.1644169
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTLK2
+</td>
+<td style="text-align:center;">
+-0.1641776
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLIX1.AS1
+</td>
+<td style="text-align:center;">
+-0.1559478
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHSPA14
+</td>
+<td style="text-align:center;">
+0.1546614
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPAK2
+</td>
+<td style="text-align:center;">
+0.1524617
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMBP
+</td>
+<td style="text-align:center;">
+-0.1505975
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMLYCD
+</td>
+<td style="text-align:center;">
+0.1488373
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHACD1
+</td>
+<td style="text-align:center;">
+-0.1468031
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circARL6IP6
+</td>
+<td style="text-align:center;">
+-0.1432176
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circENGASE
+</td>
+<td style="text-align:center;">
+-0.1425182
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPTPN12
+</td>
+<td style="text-align:center;">
+0.1401364
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAKR1E2
+</td>
+<td style="text-align:center;">
+-0.1393397
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC8A3
+</td>
+<td style="text-align:center;">
+0.1359023
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTASOR2
+</td>
+<td style="text-align:center;">
+0.1310556
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMFN2
+</td>
+<td style="text-align:center;">
+0.1289967
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCERS6
+</td>
+<td style="text-align:center;">
+0.1259813
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEPDR1
+</td>
+<td style="text-align:center;">
+0.1257127
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNFX1
+</td>
+<td style="text-align:center;">
+0.1255219
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circYPEL2
+</td>
+<td style="text-align:center;">
+0.1255133
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLDLRAD4
+</td>
+<td style="text-align:center;">
+0.1253794
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSGCD
+</td>
+<td style="text-align:center;">
+0.1242149
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHSPA4
+</td>
+<td style="text-align:center;">
+0.1227454
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCTC1
+</td>
+<td style="text-align:center;">
+0.1208673
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATP8B4
+</td>
+<td style="text-align:center;">
+0.1207444
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFRMD4A
+</td>
+<td style="text-align:center;">
+0.1207182
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHERC2P9
+</td>
+<td style="text-align:center;">
+-0.1174430
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKDM1A
+</td>
+<td style="text-align:center;">
+-0.1173867
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circOGFOD3
+</td>
+<td style="text-align:center;">
+-0.1168575
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSATB1.AS1
+</td>
+<td style="text-align:center;">
+-0.1151350
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTDH
+</td>
+<td style="text-align:center;">
+-0.1138982
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED4
+</td>
+<td style="text-align:center;">
+-0.1134969
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKRD13C
+</td>
+<td style="text-align:center;">
+0.1124331
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGGA3
+</td>
+<td style="text-align:center;">
+0.1108606
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDEPDC1
+</td>
+<td style="text-align:center;">
+-0.1101915
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEIF3B
+</td>
+<td style="text-align:center;">
+-0.1077961
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circARMH3
+</td>
+<td style="text-align:center;">
+0.1068470
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPCED1B
+</td>
+<td style="text-align:center;">
+-0.1065551
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTM9SF3
+</td>
+<td style="text-align:center;">
+-0.1045541
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTBC1D32
+</td>
+<td style="text-align:center;">
+0.1026209
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTMR1
+</td>
+<td style="text-align:center;">
+-0.1024596
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFANCM
+</td>
+<td style="text-align:center;">
+-0.1023246
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBE2E3
+</td>
+<td style="text-align:center;">
+-0.1005806
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPFKP
+</td>
+<td style="text-align:center;">
+0.0983839
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circREPS1
+</td>
+<td style="text-align:center;">
+0.0966520
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCCT3
+</td>
+<td style="text-align:center;">
+-0.0965228
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHDAC9
+</td>
+<td style="text-align:center;">
+-0.0961263
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAB27A
+</td>
+<td style="text-align:center;">
+0.0958867
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circVPS37A
+</td>
+<td style="text-align:center;">
+-0.0944366
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPLA2G6
+</td>
+<td style="text-align:center;">
+-0.0925553
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPCN1
+</td>
+<td style="text-align:center;">
+0.0925075
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAC021851.1
+</td>
+<td style="text-align:center;">
+0.0923487
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circALS2
+</td>
+<td style="text-align:center;">
+0.0919489
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMFN1
+</td>
+<td style="text-align:center;">
+0.0913032
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMAP3K4
+</td>
+<td style="text-align:center;">
+0.0911643
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circERBB2
+</td>
+<td style="text-align:center;">
+0.0902134
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circANKRD26
+</td>
+<td style="text-align:center;">
+-0.0887485
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCDC14B
+</td>
+<td style="text-align:center;">
+-0.0875071
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRUFY2
+</td>
+<td style="text-align:center;">
+-0.0873428
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCARD6
+</td>
+<td style="text-align:center;">
+-0.0866956
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAPOOL
+</td>
+<td style="text-align:center;">
+0.0856014
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMPP5
+</td>
+<td style="text-align:center;">
+-0.0852669
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEPSTI1
+</td>
+<td style="text-align:center;">
+0.0851507
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circVRK3
+</td>
+<td style="text-align:center;">
+-0.0831469
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTNPO2
+</td>
+<td style="text-align:center;">
+0.0821604
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRANBP10
+</td>
+<td style="text-align:center;">
+-0.0811103
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRAPPC8
+</td>
+<td style="text-align:center;">
+-0.0802065
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTFEC
+</td>
+<td style="text-align:center;">
+-0.0792619
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMGRN1
+</td>
+<td style="text-align:center;">
+0.0782682
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNEDD1
+</td>
+<td style="text-align:center;">
+-0.0782114
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRFX3
+</td>
+<td style="text-align:center;">
+0.0750309
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMETTL8
+</td>
+<td style="text-align:center;">
+-0.0749528
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC02814
+</td>
+<td style="text-align:center;">
+0.0723478
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPADI4
+</td>
+<td style="text-align:center;">
+0.0713125
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDIAPH1
+</td>
+<td style="text-align:center;">
+-0.0711697
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFOXM1
+</td>
+<td style="text-align:center;">
+0.0689178
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSAV1
+</td>
+<td style="text-align:center;">
+-0.0685673
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCLIC2
+</td>
+<td style="text-align:center;">
+0.0681451
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPPOX
+</td>
+<td style="text-align:center;">
+-0.0676028
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPOLA1
+</td>
+<td style="text-align:center;">
+-0.0668213
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFBXL17
+</td>
+<td style="text-align:center;">
+0.0663753
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCR1
+</td>
+<td style="text-align:center;">
+0.0656652
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF516
+</td>
+<td style="text-align:center;">
+0.0647027
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circELK4
+</td>
+<td style="text-align:center;">
+-0.0633410
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circST6GAL2
+</td>
+<td style="text-align:center;">
+0.0633254
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKREMEN1
+</td>
+<td style="text-align:center;">
+-0.0620762
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTTLL5
+</td>
+<td style="text-align:center;">
+-0.0616905
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRPRD1A
+</td>
+<td style="text-align:center;">
+0.0613237
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circABCB7
+</td>
+<td style="text-align:center;">
+0.0598840
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUGGT2
+</td>
+<td style="text-align:center;">
+-0.0590450
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFAM13A
+</td>
+<td style="text-align:center;">
+-0.0588002
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBE2I
+</td>
+<td style="text-align:center;">
+0.0587908
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCF1C
+</td>
+<td style="text-align:center;">
+0.0587475
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATF1
+</td>
+<td style="text-align:center;">
+-0.0584829
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC20A2
+</td>
+<td style="text-align:center;">
+-0.0573725
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC00222
+</td>
+<td style="text-align:center;">
+0.0568869
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNASEH2B
+</td>
+<td style="text-align:center;">
+-0.0567741
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATF7IP
+</td>
+<td style="text-align:center;">
+0.0561833
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPOC5
+</td>
+<td style="text-align:center;">
+0.0561175
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMON2
+</td>
+<td style="text-align:center;">
+-0.0559036
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPHF20
+</td>
+<td style="text-align:center;">
+0.0530738
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKDM4C
+</td>
+<td style="text-align:center;">
+-0.0529184
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMDM2
+</td>
+<td style="text-align:center;">
+0.0522915
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBE2Q2
+</td>
+<td style="text-align:center;">
+-0.0522327
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNPS1
+</td>
+<td style="text-align:center;">
+-0.0521438
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEEA1
+</td>
+<td style="text-align:center;">
+-0.0518795
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSPG7
+</td>
+<td style="text-align:center;">
+-0.0513156
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAXIN1
+</td>
+<td style="text-align:center;">
+0.0509940
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPX2
+</td>
+<td style="text-align:center;">
+-0.0494629
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMUC20.OT1
+</td>
+<td style="text-align:center;">
+-0.0493829
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLINC00910
+</td>
+<td style="text-align:center;">
+-0.0489545
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC26A8
+</td>
+<td style="text-align:center;">
+0.0487788
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHIP1
+</td>
+<td style="text-align:center;">
+-0.0486381
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKNOP1
+</td>
+<td style="text-align:center;">
+-0.0486177
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAB21
+</td>
+<td style="text-align:center;">
+-0.0484241
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMFSD11
+</td>
+<td style="text-align:center;">
+-0.0473569
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATF7IP2
+</td>
+<td style="text-align:center;">
+0.0466820
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLAMP1
+</td>
+<td style="text-align:center;">
+-0.0464245
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPHF12
+</td>
+<td style="text-align:center;">
+0.0455529
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMAST3
+</td>
+<td style="text-align:center;">
+0.0454537
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED14
+</td>
+<td style="text-align:center;">
+-0.0452922
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMMS19
+</td>
+<td style="text-align:center;">
+0.0428210
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAFF2
+</td>
+<td style="text-align:center;">
+0.0424030
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUP88
+</td>
+<td style="text-align:center;">
+-0.0421989
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTNRC6A
+</td>
+<td style="text-align:center;">
+0.0414100
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSTK39
+</td>
+<td style="text-align:center;">
+0.0409745
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEXT2
+</td>
+<td style="text-align:center;">
+0.0409224
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPSMD14
+</td>
+<td style="text-align:center;">
+-0.0402762
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSTXBP4
+</td>
+<td style="text-align:center;">
+-0.0391183
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAB11FIP1
+</td>
+<td style="text-align:center;">
+0.0386567
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPRIMPOL
+</td>
+<td style="text-align:center;">
+0.0371479
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWIPI2
+</td>
+<td style="text-align:center;">
+0.0362839
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRSBN1L
+</td>
+<td style="text-align:center;">
+-0.0360924
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC39A10
+</td>
+<td style="text-align:center;">
+-0.0357393
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circOGG1
+</td>
+<td style="text-align:center;">
+0.0353603
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circERVMER61.1
+</td>
+<td style="text-align:center;">
+-0.0348133
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATXN1
+</td>
+<td style="text-align:center;">
+0.0346673
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKEL
+</td>
+<td style="text-align:center;">
+0.0341786
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circARIH2
+</td>
+<td style="text-align:center;">
+0.0340489
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEFCAB14
+</td>
+<td style="text-align:center;">
+-0.0337042
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFBXO30
+</td>
+<td style="text-align:center;">
+-0.0337035
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZSWIM6
+</td>
+<td style="text-align:center;">
+-0.0324880
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSMARCA4
+</td>
+<td style="text-align:center;">
+-0.0318673
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCNOT2
+</td>
+<td style="text-align:center;">
+-0.0317103
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPOLQ
+</td>
+<td style="text-align:center;">
+0.0315422
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHNRNPM
+</td>
+<td style="text-align:center;">
+0.0315214
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circREL
+</td>
+<td style="text-align:center;">
+0.0314229
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHBS1L
+</td>
+<td style="text-align:center;">
+0.0294133
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTP53BP2
+</td>
+<td style="text-align:center;">
+-0.0290162
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCHST12
+</td>
+<td style="text-align:center;">
+0.0289788
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNF115
+</td>
+<td style="text-align:center;">
+-0.0284016
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEFL1
+</td>
+<td style="text-align:center;">
+-0.0282848
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMIER2
+</td>
+<td style="text-align:center;">
+0.0282653
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDMC1
+</td>
+<td style="text-align:center;">
+-0.0282188
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circHERC2P3
+</td>
+<td style="text-align:center;">
+0.0270102
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMESD
+</td>
+<td style="text-align:center;">
+0.0267197
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRNT1
+</td>
+<td style="text-align:center;">
+0.0262617
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circGPATCH1
+</td>
+<td style="text-align:center;">
+0.0258752
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAC139795.1
+</td>
+<td style="text-align:center;">
+0.0256533
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNXPE3
+</td>
+<td style="text-align:center;">
+0.0252556
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCOMMD10
+</td>
+<td style="text-align:center;">
+0.0251346
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCDC27
+</td>
+<td style="text-align:center;">
+0.0248590
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circJADE1
+</td>
+<td style="text-align:center;">
+-0.0237722
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUSP54
+</td>
+<td style="text-align:center;">
+0.0234496
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF133
+</td>
+<td style="text-align:center;">
+0.0234386
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPDLIM5
+</td>
+<td style="text-align:center;">
+0.0223406
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCEP350
+</td>
+<td style="text-align:center;">
+-0.0222723
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCOPS7B
+</td>
+<td style="text-align:center;">
+-0.0221833
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circLCLAT1
+</td>
+<td style="text-align:center;">
+-0.0219219
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMAPK1
+</td>
+<td style="text-align:center;">
+-0.0216568
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRAD17
+</td>
+<td style="text-align:center;">
+-0.0214517
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPAFAH1B2
+</td>
+<td style="text-align:center;">
+0.0211093
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circAC114755.5
+</td>
+<td style="text-align:center;">
+0.0206246
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCAPH
+</td>
+<td style="text-align:center;">
+0.0201208
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMED27
+</td>
+<td style="text-align:center;">
+-0.0188502
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDEPDC1B
+</td>
+<td style="text-align:center;">
+-0.0184121
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circKAT6B
+</td>
+<td style="text-align:center;">
+0.0183347
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNAPB
+</td>
+<td style="text-align:center;">
+0.0176047
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circADAMTS17
+</td>
+<td style="text-align:center;">
+-0.0172074
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circB4GALT5
+</td>
+<td style="text-align:center;">
+-0.0159261
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCCS
+</td>
+<td style="text-align:center;">
+0.0149930
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circIRAK3
+</td>
+<td style="text-align:center;">
+0.0145973
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC7A7
+</td>
+<td style="text-align:center;">
+0.0143751
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCNOT1
+</td>
+<td style="text-align:center;">
+-0.0142720
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWASHC2A
+</td>
+<td style="text-align:center;">
+0.0142144
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circINPP5B
+</td>
+<td style="text-align:center;">
+-0.0137083
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSLC7A6
+</td>
+<td style="text-align:center;">
+0.0136334
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTPTE2P5
+</td>
+<td style="text-align:center;">
+-0.0132309
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTTC13
+</td>
+<td style="text-align:center;">
+0.0132218
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZNF766
+</td>
+<td style="text-align:center;">
+0.0126851
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDBP
+</td>
+<td style="text-align:center;">
+0.0123019
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCEP120
+</td>
+<td style="text-align:center;">
+-0.0121069
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUSP48
+</td>
+<td style="text-align:center;">
+-0.0115886
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRABGAP1L
+</td>
+<td style="text-align:center;">
+-0.0113929
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRCAN3
+</td>
+<td style="text-align:center;">
+-0.0098436
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circWASHC2C
+</td>
+<td style="text-align:center;">
+0.0096481
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUDT2
+</td>
+<td style="text-align:center;">
+-0.0095394
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCENPE
+</td>
+<td style="text-align:center;">
+-0.0082490
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circFRA10AC1
+</td>
+<td style="text-align:center;">
+-0.0082115
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNUP205
+</td>
+<td style="text-align:center;">
+-0.0080298
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circATRX
+</td>
+<td style="text-align:center;">
+-0.0077953
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTBC1D22B
+</td>
+<td style="text-align:center;">
+0.0061410
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circSEC24A
+</td>
+<td style="text-align:center;">
+0.0056392
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTRIT1
+</td>
+<td style="text-align:center;">
+0.0054688
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCCDC88A
+</td>
+<td style="text-align:center;">
+0.0051526
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circECPAS
+</td>
+<td style="text-align:center;">
+0.0049714
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circTGS1
+</td>
+<td style="text-align:center;">
+-0.0046520
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circCD83
+</td>
+<td style="text-align:center;">
+-0.0042094
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circUBR3
+</td>
+<td style="text-align:center;">
+-0.0041097
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circBRF1
+</td>
+<td style="text-align:center;">
+-0.0037143
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circNCOA6
+</td>
+<td style="text-align:center;">
+-0.0032555
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circENOPH1
+</td>
+<td style="text-align:center;">
+0.0026111
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPPWD1
+</td>
+<td style="text-align:center;">
+0.0023711
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circZBTB24
+</td>
+<td style="text-align:center;">
+0.0016702
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circDOP1A
+</td>
+<td style="text-align:center;">
+-0.0015136
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circMTMR14
+</td>
+<td style="text-align:center;">
+0.0008203
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circPTBP3
+</td>
+<td style="text-align:center;">
+0.0007208
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRTN4
+</td>
+<td style="text-align:center;">
+0.0007039
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circRNF144A
+</td>
+<td style="text-align:center;">
+0.0006678
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+circEXOC6
+</td>
+<td style="text-align:center;">
+-0.0004387
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
-<div id="ajuste-del-modelo-utilizando-submuestreo-de-la-clase-mayoritaria" class="section level2">
-<h2>Ajuste del modelo utilizando submuestreo de la clase
+</div>
+<div id="modelo-de-regresión-lasso-con-submuestreo-de-la-clase-mayoritaria" class="section level2">
+<h2>Modelo de regresión Lasso con submuestreo de la clase
 mayoritaria</h2>
-<pre class="r"><code>undersamplingDig &lt;- ClaseMayoritariadata[sample(nrow(ClaseMayoritariadata), replace = TRUE, size = 1.25*nrow(ClaseMinoritariadata)), ]
+<div id="ajuste-del-modelo-2" class="section level3">
+<h3>Ajuste del modelo</h3>
+<p>Por último para los modelos basados en Lasso, se va a llevar a cabo
+un submuestreo de la clase mayoritaria, de manera que su número se
+equilibre en gran medida respecto al número de muestras de la clase
+minoritaria. En concreto se reducirá esta diferencia de manera que la
+clase mayoritaria solo contenga un 25% más de muestras.</p>
+<p>Tras esto se calcula el valor de <span class="math inline">\(\lambda\)</span>, obteniéndose 0.01872194, lo que
+indica una regularización Lasso más estricta que generará un modelo con
+menos predictores.</p>
+<pre class="r"><code>undersampling &lt;- ClaseMayoritariadata[sample(nrow(ClaseMayoritariadata), replace = TRUE, size = 1.25*nrow(ClaseMinoritariadata)), ]
 
 # Combinar la clase mayoritaria submuestreada con la clase minoritaria
-Train_Undersampling_balanced &lt;- rbind(ClaseMinoritariadata, undersamplingDig)
+Train_Undersampling_balanced &lt;- rbind(ClaseMinoritariadata, undersampling)
 table(Train_Undersampling_balanced$Ca_Co_Last)</code></pre>
 <pre><code>## 
 ##    Case Control 
@@ -934,12 +5162,23 @@ plot(cvLassodata)</code></pre>
 <pre class="r"><code>Lambda &lt;- cvLassodata$lambda.min
 Lambda</code></pre>
 <pre><code>## [1] 0.01872194</code></pre>
-<div id="validación-2" class="section level3">
-<h3>Validación</h3>
+<p>El modelo resultante contiene un total de 181 predictores.</p>
 <pre class="r"><code>lasso.mod.UnderS &lt;- glmnet(Traindata_x, Traindata_y, alpha = 1,
     lambda = Lambda, family = &quot;binomial&quot;)
-
-Testdata_x_Mat &lt;- data.matrix(x.test)
+lasso.mod.UnderS</code></pre>
+<pre><code>## 
+## Call:  glmnet(x = Traindata_x, y = Traindata_y, family = &quot;binomial&quot;,      alpha = 1, lambda = Lambda) 
+## 
+##    Df %Dev  Lambda
+## 1 181 53.7 0.01872</code></pre>
+</div>
+<div id="validación-2" class="section level3">
+<h3>Validación</h3>
+<p>En cuanto a su rendimiento, el modelo Lasso con submuestreo presenta
+los peores resultados, ya que su capacidad predictiva queda por debajo
+del NIR. Por este motivo, los predictores no serán utilizados en
+posteriores análisis.</p>
+<pre class="r"><code>Testdata_x_Mat &lt;- data.matrix(x.test)
 predicciones &lt;- as.data.frame(predict(lasso.mod.UnderS, newx = Testdata_x_Mat, s = &quot;lambda.min&quot;, type = &quot;response&quot;))
 
 corte &lt;- 0.5
@@ -983,7 +5222,21 @@ confusion_matrix_UnderS</code></pre>
 </div>
 <div id="características-seleccionadas-2" class="section level3">
 <h3>Características seleccionadas</h3>
-<pre class="r"><code># Extraigo los coeficientes:
+<p>En este caso también se van a extraer las características
+seleccionadas por el modelo con el fin de compararlas con las que
+obtuvieron los modelos más exitosos.</p>
+<pre class="r"><code># Creo un dataframe con los predictores
+df_coeficientes_lasso &lt;- as.data.frame(rownames(coeficientes_lasso))
+colnames(df_coeficientes_lasso) &lt;- &quot;Predictores&quot;
+
+# Le añado los coeficientes correspondientes
+df_coeficientes_lasso$Coeficientes &lt;- coef_vector
+
+# Filtro aquellos distintos de 0
+predictoresLasso &lt;- df_coeficientes_lasso[indices,]
+
+
+# Extraigo los coeficientes:
 coeficientes_lassoUnder &lt;- coef(lasso.mod.UnderS, s = &quot;lambda.min&quot;)
 
 # Para poder seleccionar mejor cuales son distintos de 0 hago unos cambios en la estructura de los datos.
@@ -997,61 +5250,1494 @@ df_coeficientes_lassoUnder &lt;- as.data.frame(rownames(coeficientes_lassoUnder)
 colnames(df_coeficientes_lassoUnder) &lt;- &quot;Predictores&quot;
 
 # Le añado los coeficientes correspondientes
-df_coeficientes_lassoUnder$coeficientes &lt;- coef_vector
+df_coeficientes_lassoUnder$Coeficientes &lt;- coef_vector
 
 # Filtro aquellos distintos de 0
+
 predictoresLasso.under &lt;- df_coeficientes_lassoUnder[indices,]
-predictoresLasso.under$Predictores</code></pre>
-<pre><code>##   [1] &quot;(Intercept)&quot;    &quot;circABCB7&quot;      &quot;circABI1&quot;       &quot;circAC118549.1&quot;
-##   [5] &quot;circAC138409.2&quot; &quot;circACSL3&quot;      &quot;circADGRA3&quot;     &quot;circAEBP2&quot;     
-##   [9] &quot;circAFF2&quot;       &quot;circAKAP11&quot;     &quot;circALS2&quot;       &quot;circAPOOL&quot;     
-##  [13] &quot;circARL6IP6&quot;    &quot;circARMH3&quot;      &quot;circASXL2&quot;      &quot;circATF7IP&quot;    
-##  [17] &quot;circBRD1&quot;       &quot;circBTN2A2&quot;     &quot;circBX890604.2&quot; &quot;circCARD6&quot;     
-##  [21] &quot;circCD83&quot;       &quot;circCDC14B&quot;     &quot;circCDC25C&quot;     &quot;circCLIP2&quot;     
-##  [25] &quot;circCNOT2&quot;      &quot;circCOA1&quot;       &quot;circCOG5&quot;       &quot;circCOMMD10&quot;   
-##  [29] &quot;circCPT1A&quot;      &quot;circCRY1&quot;       &quot;circCUL2&quot;       &quot;circDCLRE1B&quot;   
-##  [33] &quot;circDDX50&quot;      &quot;circDHTKD1&quot;     &quot;circDMC1&quot;       &quot;circEDC3&quot;      
-##  [37] &quot;circEFL1&quot;       &quot;circEIF4G3&quot;     &quot;circELK4&quot;       &quot;circEPDR1&quot;     
-##  [41] &quot;circEPN2&quot;       &quot;circERBB2&quot;      &quot;circEXO1&quot;       &quot;circEXTL3&quot;     
-##  [45] &quot;circFAM172A&quot;    &quot;circFAN1&quot;       &quot;circFANCM&quot;      &quot;circFRA10AC1&quot;  
-##  [49] &quot;circFRMD4A&quot;     &quot;circFRY&quot;        &quot;circFTO&quot;        &quot;circFUT8&quot;      
-##  [53] &quot;circGARS1&quot;      &quot;circGDAP2&quot;      &quot;circGGA3&quot;       &quot;circGIN1&quot;      
-##  [57] &quot;circGYG2P1&quot;     &quot;circHACD1&quot;      &quot;circHDAC9&quot;      &quot;circHERC2P9&quot;   
-##  [61] &quot;circHSPA4&quot;      &quot;circIGF2BP2&quot;    &quot;circIL21R&quot;      &quot;circIMMP1L&quot;    
-##  [65] &quot;circINTS2&quot;      &quot;circINTS7&quot;      &quot;circIRAK3&quot;      &quot;circITPA&quot;      
-##  [69] &quot;circITSN1&quot;      &quot;circKDM1A&quot;      &quot;circKHDRBS1&quot;    &quot;circKMT5A&quot;     
-##  [73] &quot;circLAMP1&quot;      &quot;circLDLRAD3&quot;    &quot;circLINC00222&quot;  &quot;circLIX1.AS1&quot;  
-##  [77] &quot;circLPP&quot;        &quot;circLRP5L&quot;      &quot;circLRRC58&quot;     &quot;circMAP3K4&quot;    
-##  [81] &quot;circMARCHF8&quot;    &quot;circMAST3&quot;      &quot;circMBP&quot;        &quot;circMDGA1&quot;     
-##  [85] &quot;circMFN2&quot;       &quot;circMGRN1&quot;      &quot;circMIR29B2CHG&quot; &quot;circMLYCD&quot;     
-##  [89] &quot;circMPP5&quot;       &quot;circMTO1&quot;       &quot;circNCAPG2&quot;     &quot;circNCF1C&quot;     
-##  [93] &quot;circNDUFA10&quot;    &quot;circNEAT1&quot;      &quot;circNIPAL3&quot;     &quot;circNUP205&quot;    
-##  [97] &quot;circOCRL&quot;       &quot;circOGFOD3&quot;     &quot;circPABPC1L&quot;    &quot;circPADI4&quot;     
-## [101] &quot;circPAK2&quot;       &quot;circPAM&quot;        &quot;circPARN&quot;       &quot;circPFKP&quot;      
-## [105] &quot;circPIK3CB&quot;     &quot;circPIK3R1&quot;     &quot;circPLCL2&quot;      &quot;circPLTP&quot;      
-## [109] &quot;circPOC5&quot;       &quot;circPOLA1&quot;      &quot;circPPIP5K2&quot;    &quot;circPPP2R5C&quot;   
-## [113] &quot;circPRKD3&quot;      &quot;circPSMD14&quot;     &quot;circPTER&quot;       &quot;circRAB27A&quot;    
-## [117] &quot;circRALGAPA1&quot;   &quot;circREPS2&quot;      &quot;circRFC2&quot;       &quot;circRIC8B&quot;     
-## [121] &quot;circRIPK1&quot;      &quot;circRMDN3&quot;      &quot;circRNASEH2B&quot;   &quot;circRNPS1&quot;     
-## [125] &quot;circRPRD1A&quot;     &quot;circRUFY2&quot;      &quot;circSAV1&quot;       &quot;circSCAF4&quot;     
-## [129] &quot;circSCAP&quot;       &quot;circSEC24A&quot;     &quot;circSGCD&quot;       &quot;circSLC36A4&quot;   
-## [133] &quot;circSLC39A10&quot;   &quot;circSLC39A8&quot;    &quot;circSMARCC1&quot;    &quot;circSMARCD1&quot;   
-## [137] &quot;circSMC3&quot;       &quot;circSNRK&quot;       &quot;circSON&quot;        &quot;circST6GAL2&quot;   
-## [141] &quot;circSTK3&quot;       &quot;circTBC1D2B&quot;    &quot;circTFEC&quot;       &quot;circTFG&quot;       
-## [145] &quot;circTGFBR3&quot;     &quot;circTLE4&quot;       &quot;circTLK2&quot;       &quot;circTM9SF3&quot;    
-## [149] &quot;circTMEM120B&quot;   &quot;circTMEM164&quot;    &quot;circTNPO3&quot;      &quot;circTNRC6A&quot;    
-## [153] &quot;circTOR1AIP2&quot;   &quot;circTPCN1&quot;      &quot;circTPX2&quot;       &quot;circTRABD2A&quot;   
-## [157] &quot;circTRAF5&quot;      &quot;circTRAPPC8&quot;    &quot;circTRIM37&quot;     &quot;circTRNT1&quot;     
-## [161] &quot;circTTN.AS1&quot;    &quot;circTUBGCP5&quot;    &quot;circUBAC2&quot;      &quot;circUBE2E3&quot;    
-## [165] &quot;circUBE3B&quot;      &quot;circUBE3C&quot;      &quot;circUBR3&quot;       &quot;circUBR5&quot;      
-## [169] &quot;circUGGT2&quot;      &quot;circUSP49&quot;      &quot;circVPS37A&quot;     &quot;circVRK3&quot;      
-## [173] &quot;circWDHD1&quot;      &quot;circWDR74&quot;      &quot;circXRCC1&quot;      &quot;circZDHHC14&quot;   
-## [177] &quot;circZFAND3&quot;     &quot;circZFYVE1&quot;     &quot;circZFYVE26&quot;    &quot;circZNF766&quot;    
-## [181] &quot;circZNF81&quot;      &quot;circZSWIM6&quot;</code></pre>
-<p>Comparación del rendimiento entre modelos</p>
+
+predictoresLasso.under &lt;- arrange(predictoresLasso.under, desc(abs(Coeficientes))) %&gt;%
+  filter(Predictores != &quot;(Intercept)&quot;)
+
+kbl(predictoresLasso.under) %&gt;%
+  kable_paper() %&gt;%
+  scroll_box(width = &quot;100%&quot;, height = &quot;200px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:200px; overflow-x: scroll; width:100%; ">
+<table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+Predictores
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+Coeficientes
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+circNCF1C
+</td>
+<td style="text-align:right;">
+0.3132510
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMFN2
+</td>
+<td style="text-align:right;">
+0.2995963
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTRAPPC8
+</td>
+<td style="text-align:right;">
+-0.2620990
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRFC2
+</td>
+<td style="text-align:right;">
+0.2614760
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAPOOL
+</td>
+<td style="text-align:right;">
+0.2459266
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circERBB2
+</td>
+<td style="text-align:right;">
+0.2378321
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circINTS7
+</td>
+<td style="text-align:right;">
+0.1839261
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circKDM1A
+</td>
+<td style="text-align:right;">
+-0.1652175
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEPDR1
+</td>
+<td style="text-align:right;">
+0.1608623
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circNEAT1
+</td>
+<td style="text-align:right;">
+-0.1553767
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMPP5
+</td>
+<td style="text-align:right;">
+-0.1546017
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTRABD2A
+</td>
+<td style="text-align:right;">
+-0.1486395
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circITPA
+</td>
+<td style="text-align:right;">
+-0.1452878
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCOG5
+</td>
+<td style="text-align:right;">
+-0.1403627
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPFKP
+</td>
+<td style="text-align:right;">
+0.1395500
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRIC8B
+</td>
+<td style="text-align:right;">
+0.1390035
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCPT1A
+</td>
+<td style="text-align:right;">
+-0.1363585
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circGIN1
+</td>
+<td style="text-align:right;">
+0.1345511
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCARD6
+</td>
+<td style="text-align:right;">
+-0.1342126
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSLC39A8
+</td>
+<td style="text-align:right;">
+-0.1302688
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circATF7IP
+</td>
+<td style="text-align:right;">
+0.1287337
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circNIPAL3
+</td>
+<td style="text-align:right;">
+0.1285367
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTPX2
+</td>
+<td style="text-align:right;">
+-0.1260483
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMDGA1
+</td>
+<td style="text-align:right;">
+-0.1257448
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLIX1.AS1
+</td>
+<td style="text-align:right;">
+-0.1245393
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circHDAC9
+</td>
+<td style="text-align:right;">
+-0.1234548
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circGYG2P1
+</td>
+<td style="text-align:right;">
+0.1228126
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMLYCD
+</td>
+<td style="text-align:right;">
+0.1192679
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circHERC2P9
+</td>
+<td style="text-align:right;">
+-0.1187735
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMGRN1
+</td>
+<td style="text-align:right;">
+0.1149741
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCD83
+</td>
+<td style="text-align:right;">
+-0.1020123
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTM9SF3
+</td>
+<td style="text-align:right;">
+-0.1002456
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPAK2
+</td>
+<td style="text-align:right;">
+0.0999158
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circHACD1
+</td>
+<td style="text-align:right;">
+-0.0989602
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMAST3
+</td>
+<td style="text-align:right;">
+0.0984995
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRNPS1
+</td>
+<td style="text-align:right;">
+-0.0978170
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circDDX50
+</td>
+<td style="text-align:right;">
+0.0974419
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRUFY2
+</td>
+<td style="text-align:right;">
+-0.0960837
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRAB27A
+</td>
+<td style="text-align:right;">
+0.0960070
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTNRC6A
+</td>
+<td style="text-align:right;">
+0.0949259
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFRA10AC1
+</td>
+<td style="text-align:right;">
+-0.0942207
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circABCB7
+</td>
+<td style="text-align:right;">
+0.0937779
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTLK2
+</td>
+<td style="text-align:right;">
+-0.0937238
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRALGAPA1
+</td>
+<td style="text-align:right;">
+-0.0924618
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPLTP
+</td>
+<td style="text-align:right;">
+0.0920461
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBR5
+</td>
+<td style="text-align:right;">
+0.0910351
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEFL1
+</td>
+<td style="text-align:right;">
+-0.0907164
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBE2E3
+</td>
+<td style="text-align:right;">
+-0.0904806
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZSWIM6
+</td>
+<td style="text-align:right;">
+-0.0898718
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circOCRL
+</td>
+<td style="text-align:right;">
+-0.0892190
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZFYVE1
+</td>
+<td style="text-align:right;">
+0.0881011
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circNUP205
+</td>
+<td style="text-align:right;">
+-0.0862441
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTNPO3
+</td>
+<td style="text-align:right;">
+0.0845314
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEXTL3
+</td>
+<td style="text-align:right;">
+0.0836859
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPPIP5K2
+</td>
+<td style="text-align:right;">
+0.0835464
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPIK3R1
+</td>
+<td style="text-align:right;">
+0.0834697
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPLCL2
+</td>
+<td style="text-align:right;">
+-0.0821060
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circVRK3
+</td>
+<td style="text-align:right;">
+-0.0816584
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circDHTKD1
+</td>
+<td style="text-align:right;">
+0.0811544
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFANCM
+</td>
+<td style="text-align:right;">
+-0.0802394
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCRY1
+</td>
+<td style="text-align:right;">
+-0.0780887
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLINC00222
+</td>
+<td style="text-align:right;">
+0.0778090
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPRKD3
+</td>
+<td style="text-align:right;">
+-0.0767294
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPARN
+</td>
+<td style="text-align:right;">
+-0.0760349
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSMARCD1
+</td>
+<td style="text-align:right;">
+0.0756479
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSTK3
+</td>
+<td style="text-align:right;">
+-0.0749973
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTTN.AS1
+</td>
+<td style="text-align:right;">
+0.0737607
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPSMD14
+</td>
+<td style="text-align:right;">
+-0.0732170
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPOLA1
+</td>
+<td style="text-align:right;">
+-0.0731802
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPPP2R5C
+</td>
+<td style="text-align:right;">
+0.0728872
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEIF4G3
+</td>
+<td style="text-align:right;">
+-0.0705550
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circITSN1
+</td>
+<td style="text-align:right;">
+-0.0688195
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSON
+</td>
+<td style="text-align:right;">
+-0.0687277
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circXRCC1
+</td>
+<td style="text-align:right;">
+0.0684641
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTFG
+</td>
+<td style="text-align:right;">
+-0.0683470
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFAN1
+</td>
+<td style="text-align:right;">
+0.0679626
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circKMT5A
+</td>
+<td style="text-align:right;">
+0.0671126
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMARCHF8
+</td>
+<td style="text-align:right;">
+-0.0658416
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZFYVE26
+</td>
+<td style="text-align:right;">
+0.0648970
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLPP
+</td>
+<td style="text-align:right;">
+-0.0628470
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCDC14B
+</td>
+<td style="text-align:right;">
+-0.0617092
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circARMH3
+</td>
+<td style="text-align:right;">
+0.0615253
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTUBGCP5
+</td>
+<td style="text-align:right;">
+0.0614248
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circDCLRE1B
+</td>
+<td style="text-align:right;">
+0.0602924
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circWDHD1
+</td>
+<td style="text-align:right;">
+-0.0602590
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFTO
+</td>
+<td style="text-align:right;">
+0.0591792
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSNRK
+</td>
+<td style="text-align:right;">
+0.0584927
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEDC3
+</td>
+<td style="text-align:right;">
+0.0578500
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTPCN1
+</td>
+<td style="text-align:right;">
+0.0561802
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPTER
+</td>
+<td style="text-align:right;">
+0.0553149
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPADI4
+</td>
+<td style="text-align:right;">
+0.0546488
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circINTS2
+</td>
+<td style="text-align:right;">
+0.0546399
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZNF766
+</td>
+<td style="text-align:right;">
+0.0541490
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circIMMP1L
+</td>
+<td style="text-align:right;">
+-0.0517902
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCOA1
+</td>
+<td style="text-align:right;">
+0.0517568
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSLC39A10
+</td>
+<td style="text-align:right;">
+-0.0509227
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circOGFOD3
+</td>
+<td style="text-align:right;">
+-0.0487211
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPAM
+</td>
+<td style="text-align:right;">
+-0.0482170
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTMEM164
+</td>
+<td style="text-align:right;">
+0.0481073
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSAV1
+</td>
+<td style="text-align:right;">
+-0.0478991
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSLC36A4
+</td>
+<td style="text-align:right;">
+0.0476911
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circBTN2A2
+</td>
+<td style="text-align:right;">
+0.0470118
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUSP49
+</td>
+<td style="text-align:right;">
+-0.0462953
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circGGA3
+</td>
+<td style="text-align:right;">
+0.0453234
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCDC25C
+</td>
+<td style="text-align:right;">
+-0.0437805
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAC118549.1
+</td>
+<td style="text-align:right;">
+-0.0436166
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZFAND3
+</td>
+<td style="text-align:right;">
+0.0431223
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTFEC
+</td>
+<td style="text-align:right;">
+-0.0412176
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAEBP2
+</td>
+<td style="text-align:right;">
+-0.0408930
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFAM172A
+</td>
+<td style="text-align:right;">
+-0.0407800
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTRAF5
+</td>
+<td style="text-align:right;">
+0.0406463
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUGGT2
+</td>
+<td style="text-align:right;">
+-0.0393552
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circGDAP2
+</td>
+<td style="text-align:right;">
+0.0354645
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCLIP2
+</td>
+<td style="text-align:right;">
+0.0351691
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circIGF2BP2
+</td>
+<td style="text-align:right;">
+0.0349490
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLRP5L
+</td>
+<td style="text-align:right;">
+-0.0345380
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circHSPA4
+</td>
+<td style="text-align:right;">
+0.0341981
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSCAF4
+</td>
+<td style="text-align:right;">
+-0.0332455
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFRMD4A
+</td>
+<td style="text-align:right;">
+0.0331312
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZDHHC14
+</td>
+<td style="text-align:right;">
+0.0319583
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circBX890604.2
+</td>
+<td style="text-align:right;">
+-0.0315942
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circST6GAL2
+</td>
+<td style="text-align:right;">
+0.0309048
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMAP3K4
+</td>
+<td style="text-align:right;">
+0.0303205
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLAMP1
+</td>
+<td style="text-align:right;">
+-0.0294290
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTBC1D2B
+</td>
+<td style="text-align:right;">
+0.0281659
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSMC3
+</td>
+<td style="text-align:right;">
+-0.0252225
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circVPS37A
+</td>
+<td style="text-align:right;">
+-0.0250185
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circBRD1
+</td>
+<td style="text-align:right;">
+-0.0236143
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPABPC1L
+</td>
+<td style="text-align:right;">
+0.0220079
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circNCAPG2
+</td>
+<td style="text-align:right;">
+-0.0207926
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circASXL2
+</td>
+<td style="text-align:right;">
+0.0206720
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEPN2
+</td>
+<td style="text-align:right;">
+0.0204736
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circARL6IP6
+</td>
+<td style="text-align:right;">
+-0.0204609
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSCAP
+</td>
+<td style="text-align:right;">
+-0.0200170
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circALS2
+</td>
+<td style="text-align:right;">
+0.0186197
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPIK3CB
+</td>
+<td style="text-align:right;">
+0.0180611
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTGFBR3
+</td>
+<td style="text-align:right;">
+0.0176883
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFUT8
+</td>
+<td style="text-align:right;">
+-0.0172181
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAC138409.2
+</td>
+<td style="text-align:right;">
+-0.0171681
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circADGRA3
+</td>
+<td style="text-align:right;">
+-0.0170951
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circABI1
+</td>
+<td style="text-align:right;">
+0.0169985
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circGARS1
+</td>
+<td style="text-align:right;">
+-0.0167136
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circNDUFA10
+</td>
+<td style="text-align:right;">
+0.0165425
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circIL21R
+</td>
+<td style="text-align:right;">
+-0.0164216
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circWDR74
+</td>
+<td style="text-align:right;">
+-0.0162938
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circDMC1
+</td>
+<td style="text-align:right;">
+-0.0152316
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSMARCC1
+</td>
+<td style="text-align:right;">
+-0.0143194
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLDLRAD3
+</td>
+<td style="text-align:right;">
+-0.0141540
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circKHDRBS1
+</td>
+<td style="text-align:right;">
+-0.0132826
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTRIM37
+</td>
+<td style="text-align:right;">
+-0.0122046
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTOR1AIP2
+</td>
+<td style="text-align:right;">
+0.0119902
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBAC2
+</td>
+<td style="text-align:right;">
+-0.0118842
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAKAP11
+</td>
+<td style="text-align:right;">
+-0.0113293
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCUL2
+</td>
+<td style="text-align:right;">
+0.0113149
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMIR29B2CHG
+</td>
+<td style="text-align:right;">
+0.0107196
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMBP
+</td>
+<td style="text-align:right;">
+-0.0104518
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circAFF2
+</td>
+<td style="text-align:right;">
+0.0104284
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSGCD
+</td>
+<td style="text-align:right;">
+0.0100142
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circFRY
+</td>
+<td style="text-align:right;">
+-0.0092834
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circZNF81
+</td>
+<td style="text-align:right;">
+0.0083986
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCOMMD10
+</td>
+<td style="text-align:right;">
+0.0077908
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRPRD1A
+</td>
+<td style="text-align:right;">
+0.0063253
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circELK4
+</td>
+<td style="text-align:right;">
+-0.0063198
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBE3B
+</td>
+<td style="text-align:right;">
+-0.0059269
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circPOC5
+</td>
+<td style="text-align:right;">
+0.0058916
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRMDN3
+</td>
+<td style="text-align:right;">
+0.0058337
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circREPS2
+</td>
+<td style="text-align:right;">
+0.0053553
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRNASEH2B
+</td>
+<td style="text-align:right;">
+-0.0053042
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circMTO1
+</td>
+<td style="text-align:right;">
+-0.0052532
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTRNT1
+</td>
+<td style="text-align:right;">
+0.0043761
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circACSL3
+</td>
+<td style="text-align:right;">
+0.0043275
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circRIPK1
+</td>
+<td style="text-align:right;">
+0.0043052
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBE3C
+</td>
+<td style="text-align:right;">
+-0.0037909
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circEXO1
+</td>
+<td style="text-align:right;">
+-0.0036503
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circCNOT2
+</td>
+<td style="text-align:right;">
+-0.0036340
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTMEM120B
+</td>
+<td style="text-align:right;">
+-0.0029171
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circSEC24A
+</td>
+<td style="text-align:right;">
+0.0023961
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circTLE4
+</td>
+<td style="text-align:right;">
+0.0018188
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circLRRC58
+</td>
+<td style="text-align:right;">
+-0.0013944
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circIRAK3
+</td>
+<td style="text-align:right;">
+0.0001908
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+circUBR3
+</td>
+<td style="text-align:right;">
+-0.0001442
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div id="comparación-del-rendimiento-entre-modelos" class="section level1">
+<h1>Comparación del rendimiento entre modelos</h1>
+<p>Para almacenar los resultados de rendimiento de los modelos y
+compararlos más adelante se va a generar un dataframe con las métricas
+calculadas en la matriz de confusión. También se añadirá el número de
+predictores</p>
 <pre class="r"><code>Lasso &lt;- data.frame(t(c(confusion_matrix_Lasso$byClass, confusion_matrix_Lasso$overall, &quot;N.Pred&quot; = nrow(predictoresLasso_Sort))), row.names = &quot;Lasso&quot;)
-Lasso.OverS &lt;- data.frame(t(c(confusion_matrix_OverS$byClass, confusion_matrix_OverS$overall, &quot;N.Pred&quot; = nrow(predictoresLasso.over)-1)), row.names = &quot;Lasso.OverS&quot;)
-Lasso.UnderS &lt;- data.frame(t(c(confusion_matrix_UnderS$byClass, confusion_matrix_UnderS$overall, &quot;N.Pred&quot; = nrow(predictoresLasso.under)-1)), row.names = &quot;Lasso.UnderS&quot;)
+Lasso.OverS &lt;- data.frame(t(c(confusion_matrix_OverS$byClass, confusion_matrix_OverS$overall, &quot;N.Pred&quot; = nrow(predictoresLasso.over))), row.names = &quot;Lasso.OverS&quot;)
+Lasso.UnderS &lt;- data.frame(t(c(confusion_matrix_UnderS$byClass, confusion_matrix_UnderS$overall, &quot;N.Pred&quot; = nrow(predictoresLasso.under))), row.names = &quot;Lasso.UnderS&quot;)
 
 MatConfLassoDF &lt;- rbind(Lasso, Lasso.OverS, Lasso.UnderS)
 
@@ -1246,7 +6932,7 @@ Lasso.OverS
 0.0035686
 </td>
 <td style="text-align:right;">
-239
+240
 </td>
 </tr>
 <tr>
@@ -1314,19 +7000,26 @@ Lasso.UnderS
 </tbody>
 </table>
 </div>
-<pre class="r"><code>table(predictoresLasso$Predictores %in% predictoresLasso.over$Predictores)</code></pre>
-<pre><code>## 
-## FALSE  TRUE 
-##    97   142</code></pre>
 </div>
-</div>
-<div id="session-info" class="section level2">
-<h2>Session Info</h2>
+<div id="session-info" class="section level1">
+<h1>Session Info</h1>
 <details style="margin-bottom:10px;">
 <summary>
 Session info
 </summary>
-<pre><code>## ═ Session info ═══════════════════════════════════════════════════════════════
+<pre><code>## ─ Session info ───────────────────────────────────────────────────────────────
+##  setting  value
+##  version  R version 4.3.2 (2023-10-31 ucrt)
+##  os       Windows 11 x64 (build 22621)
+##  system   x86_64, mingw32
+##  ui       RTerm
+##  language (EN)
+##  collate  Spanish_Spain.utf8
+##  ctype    Spanish_Spain.utf8
+##  tz       Europe/Madrid
+##  date     2024-01-20
+##  pandoc   3.1.1 @ C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools/ (via rmarkdown)
+## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
 ##  package      * version    date (UTC) lib source
 ##  bslib          0.6.1      2023-11-28 [1] CRAN (R 4.3.2)
@@ -1384,7 +7077,6 @@ Session info
 ##  proxy          0.4-27     2022-06-09 [1] CRAN (R 4.3.2)
 ##  purrr          1.0.2      2023-08-10 [1] CRAN (R 4.3.2)
 ##  R6             2.5.1      2021-08-19 [1] CRAN (R 4.3.2)
-##  ranger       * 0.16.0     2023-11-12 [1] CRAN (R 4.3.2)
 ##  Rcpp           1.0.11     2023-07-06 [1] CRAN (R 4.3.2)
 ##  recipes        1.0.9      2023-12-13 [1] CRAN (R 4.3.2)
 ##  reshape2       1.4.4      2020-04-09 [1] CRAN (R 4.3.2)
@@ -1420,7 +7112,6 @@ Session info
 ## 
 ## ──────────────────────────────────────────────────────────────────────────────</code></pre>
 </details>
-</div>
 </div>
 
 
