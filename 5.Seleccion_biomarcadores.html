@@ -2287,6 +2287,8 @@ kt &lt;- &quot;UniProtKB&quot;
 
 PD_df &lt;- UniProt.ws::select(up, keys, columns, kt)
 
+PD_df_raw &lt;- PD_df
+
 kbl(PD_df, format = &quot;html&quot;, caption = &quot;Proteínas relacionadas con Parkinson&quot;, row.names = FALSE) %&gt;%
   kableExtra::kable_paper() %&gt;%
   scroll_box(width = &quot;100%&quot;, height = &quot;500px&quot;)</code></pre>
@@ -7339,13 +7341,13 @@ for (col in columns_to_process) {
 PD_df$Interacts.with &lt;- gsub(&quot; &quot;, &quot;&quot;, PD_df$Interacts.with)
 PD_df$Interacts.with &lt;- gsub(&quot;;&quot;, &quot; &quot;, PD_df$Interacts.with)
 
-kbl(PD_df, format = &quot;html&quot;, caption = &quot;Proteínas relacionadas con Parkinson&quot;, row.names = FALSE) %&gt;%
+kbl(PD_df, format = &quot;html&quot;, caption = &quot;Proteínas relacionadas con Parkinson procesadas&quot;, row.names = FALSE) %&gt;%
   kableExtra::kable_paper() %&gt;%
   scroll_box(width = &quot;100%&quot;, height = &quot;500px&quot;)</code></pre>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:500px; overflow-x: scroll; width:100%; ">
 <table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
 <caption>
-Proteínas relacionadas con Parkinson
+Proteínas relacionadas con Parkinson procesadas
 </caption>
 <thead>
 <tr>
@@ -12625,141 +12627,408 @@ table(GO_Imp_signif$ONTOLOGY)</code></pre>
 <pre><code>## 
 ## BP CC MF 
 ##  3  4  3</code></pre>
-<pre class="r"><code>kbl(GO_Imp_signif[, c(&quot;Description&quot;, &quot;geneID&quot;, &quot;qvalue&quot;)], format = &quot;html&quot;, caption = &quot;GO terms. concomitantes circRNA-Parkinson Significativos&quot;, booktabs = TRUE, row.names = FALSE) %&gt;%
-  kableExtra::kable_paper()</code></pre>
+<pre class="r"><code>kbl(GO_Imp_signif, format = &quot;html&quot;, caption = &quot;GO terms. concomitantes circRNA-Parkinson Significativos&quot;, booktabs = TRUE, row.names = FALSE) %&gt;%
+  kableExtra::kable_paper() %&gt;%
+  scroll_box(width = &quot;100%&quot;, height = &quot;500px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:500px; overflow-x: scroll; width:100%; ">
 <table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
 <caption>
 GO terms. concomitantes circRNA-Parkinson Significativos
 </caption>
 <thead>
 <tr>
-<th style="text-align:left;">
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+ONTOLOGY
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+ID
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
 Description
 </th>
-<th style="text-align:left;">
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+GeneRatio
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+BgRatio
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+pvalue
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+p.adjust
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+qvalue
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
 geneID
 </th>
-<th style="text-align:right;">
-qvalue
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+Count
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+Model
 </th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align:left;">
+CC
+</td>
+<td style="text-align:left;">
+<a href="GO:0005769" class="uri">GO:0005769</a>
+</td>
+<td style="text-align:left;">
 early endosome
+</td>
+<td style="text-align:left;">
+18/219
+</td>
+<td style="text-align:left;">
+427/19886
+</td>
+<td style="text-align:right;">
+0.0000013
+</td>
+<td style="text-align:right;">
+0.0004148
+</td>
+<td style="text-align:right;">
+0.0003821
 </td>
 <td style="text-align:left;">
 ERBB2 MGRN1 GGA3 RAB21 MON2 TPCN1 WASHC2A STX6 TBC1D2B ALS2 GPR107
 LDLRAD4 INPP5B MARCHF8 RABGAP1L ZFYVE26 AP1G1 AP3D1
 </td>
 <td style="text-align:right;">
-0.0003821
+18
+</td>
+<td style="text-align:left;">
+LASSO
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+BP
+</td>
+<td style="text-align:left;">
+<a href="GO:0045786" class="uri">GO:0045786</a>
+</td>
+<td style="text-align:left;">
 negative regulation of cell cycle
+</td>
+<td style="text-align:left;">
+16/201
+</td>
+<td style="text-align:left;">
+407/18870
+</td>
+<td style="text-align:right;">
+0.0000079
+</td>
+<td style="text-align:right;">
+0.0023675
+</td>
+<td style="text-align:right;">
+0.0021393
 </td>
 <td style="text-align:left;">
 WAPL ATRX CHEK2 RBL1 LATS1 UIMC1 BRCA1 BARD1 PTPN11 RNASEH2B CDK5RAP2
 DTL WAC TERF2 MDM2 BUB1
 </td>
 <td style="text-align:right;">
-0.0021393
+16
+</td>
+<td style="text-align:left;">
+RF
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+CC
+</td>
+<td style="text-align:left;">
+<a href="GO:0005769" class="uri">GO:0005769</a>
+</td>
+<td style="text-align:left;">
 early endosome
+</td>
+<td style="text-align:left;">
+16/219
+</td>
+<td style="text-align:left;">
+427/19886
+</td>
+<td style="text-align:right;">
+0.0000221
+</td>
+<td style="text-align:right;">
+0.0071836
+</td>
+<td style="text-align:right;">
+0.0069800
 </td>
 <td style="text-align:left;">
 ALS2 ECPAS EEA1 ERBB2 GGA3 INPP5B LDLRAD4 MAPK1 MGRN1 MON2 RAB21
 RABGAP1L TBC1D2B TPCN1 WASHC2A WASHC2C
 </td>
 <td style="text-align:right;">
-0.0069800
+16
+</td>
+<td style="text-align:left;">
+LASSO OV
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+BP
+</td>
+<td style="text-align:left;">
+<a href="GO:0033044" class="uri">GO:0033044</a>
+</td>
+<td style="text-align:left;">
 regulation of chromosome organization
+</td>
+<td style="text-align:left;">
+10/201
+</td>
+<td style="text-align:left;">
+247/18870
+</td>
+<td style="text-align:right;">
+0.0003280
+</td>
+<td style="text-align:right;">
+0.0248995
+</td>
+<td style="text-align:right;">
+0.0225001
 </td>
 <td style="text-align:left;">
 WAPL ATRX XRN1 USP7 CDK5RAP2 MAPK1 TERF2 SETDB2 SLF2 BUB1
 </td>
 <td style="text-align:right;">
-0.0225001
+10
+</td>
+<td style="text-align:left;">
+RF
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+CC
+</td>
+<td style="text-align:left;">
+<a href="GO:0034399" class="uri">GO:0034399</a>
+</td>
+<td style="text-align:left;">
 nuclear periphery
+</td>
+<td style="text-align:left;">
+8/219
+</td>
+<td style="text-align:left;">
+150/19886
+</td>
+<td style="text-align:right;">
+0.0002626
+</td>
+<td style="text-align:right;">
+0.0250071
+</td>
+<td style="text-align:right;">
+0.0230328
 </td>
 <td style="text-align:left;">
 POLA1 NUP205 SMARCC1 AKAP8L SMARCD1 ATXN1 HNRNPM SMARCA4
 </td>
 <td style="text-align:right;">
-0.0230328
+8
+</td>
+<td style="text-align:left;">
+LASSO
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+BP
+</td>
+<td style="text-align:left;">
+<a href="GO:0030900" class="uri">GO:0030900</a>
+</td>
+<td style="text-align:left;">
 forebrain development
+</td>
+<td style="text-align:left;">
+13/201
+</td>
+<td style="text-align:left;">
+407/18870
+</td>
+<td style="text-align:right;">
+0.0004400
+</td>
+<td style="text-align:right;">
+0.0296458
+</td>
+<td style="text-align:right;">
+0.0267891
 </td>
 <td style="text-align:left;">
 KIF14 ATRX ASPM WDR37 ZEB1 PCM1 KDM1A CRKL SCYL2 NCOA1 HERC1 NF1 STIL
 </td>
 <td style="text-align:right;">
-0.0267891
+13
+</td>
+<td style="text-align:left;">
+RF
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+MF
+</td>
+<td style="text-align:left;">
+<a href="GO:0050681" class="uri">GO:0050681</a>
+</td>
+<td style="text-align:left;">
 nuclear androgen receptor binding
+</td>
+<td style="text-align:left;">
+4/220
+</td>
+<td style="text-align:left;">
+26/18496
+</td>
+<td style="text-align:right;">
+0.0002371
+</td>
+<td style="text-align:right;">
+0.0304438
+</td>
+<td style="text-align:right;">
+0.0270850
 </td>
 <td style="text-align:left;">
 KDM1A KDM4C NSD1 SMARCA4
 </td>
 <td style="text-align:right;">
-0.0270850
+4
+</td>
+<td style="text-align:left;">
+LASSO OV
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+MF
+</td>
+<td style="text-align:left;">
+<a href="GO:0003713" class="uri">GO:0003713</a>
+</td>
+<td style="text-align:left;">
 transcription coactivator activity
+</td>
+<td style="text-align:left;">
+11/220
+</td>
+<td style="text-align:left;">
+280/18496
+</td>
+<td style="text-align:right;">
+0.0005490
+</td>
+<td style="text-align:right;">
+0.0374870
+</td>
+<td style="text-align:right;">
+0.0333511
 </td>
 <td style="text-align:left;">
 JADE1 KAT6B KDM1A KDM4C MED14 MED27 MED4 MMS19 MTDH NCOA6 SMARCA4
 </td>
 <td style="text-align:right;">
-0.0333511
+11
+</td>
+<td style="text-align:left;">
+LASSO OV
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+MF
+</td>
+<td style="text-align:left;">
+<a href="GO:0003714" class="uri">GO:0003714</a>
+</td>
+<td style="text-align:left;">
 transcription corepressor activity
+</td>
+<td style="text-align:left;">
+9/216
+</td>
+<td style="text-align:left;">
+194/18496
+</td>
+<td style="text-align:right;">
+0.0004717
+</td>
+<td style="text-align:right;">
+0.0455705
+</td>
+<td style="text-align:right;">
+0.0397259
 </td>
 <td style="text-align:left;">
 ATF7IP HDAC9 PHF12 MECP2 MIER2 MED1 NSD1 CASP8AP2 SMARCA4
 </td>
 <td style="text-align:right;">
-0.0397259
+9
+</td>
+<td style="text-align:left;">
+LASSO
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
+CC
+</td>
+<td style="text-align:left;">
+<a href="GO:0031901" class="uri">GO:0031901</a>
+</td>
+<td style="text-align:left;">
 early endosome membrane
+</td>
+<td style="text-align:left;">
+8/219
+</td>
+<td style="text-align:left;">
+195/19886
+</td>
+<td style="text-align:right;">
+0.0014709
+</td>
+<td style="text-align:right;">
+0.0522999
+</td>
+<td style="text-align:right;">
+0.0481710
 </td>
 <td style="text-align:left;">
 GGA3 RAB21 MON2 TPCN1 WASHC2A LDLRAD4 INPP5B MARCHF8
 </td>
 <td style="text-align:right;">
-0.0481710
+8
+</td>
+<td style="text-align:left;">
+LASSO
 </td>
 </tr>
 </tbody>
 </table>
+</div>
 <p>En estos 10 procesos se encuentran enriquecidos un total de 79
 circRNA diferentes, que junto a los identificados en el primer apartado
 serán considerados como potenciales biomarcadores.</p>
@@ -12800,13 +13069,13 @@ Parkinson_related &lt;- unlist(strsplit(PD_df$Gene.Names, &quot; &quot;))
 
 Parkinson_related[Parkinson_related %in% c(predictoresLasso_Symbol, predictoresLassoOv_Symbol, predictoresRF_Symbol)] </code></pre>
 <pre><code>## [1] &quot;PLA2G6&quot;</code></pre>
-<pre class="r"><code>kbl(PD_df[9,], format = &quot;html&quot;, caption = &quot;Proteínas relacionadas con Parkinson&quot;, row.names = FALSE) %&gt;%
+<pre class="r"><code>kbl(PD_df_raw[9,], format = &quot;html&quot;, caption = &quot;PLA2G6&quot;, row.names = FALSE) %&gt;%
   kableExtra::kable_paper() %&gt;%
   scroll_box(width = &quot;100%&quot;, height = &quot;500px&quot;)</code></pre>
 <div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:500px; overflow-x: scroll; width:100%; ">
 <table class=" lightable-paper" style="font-family: &quot;Arial Narrow&quot;, arial, helvetica, sans-serif; margin-left: auto; margin-right: auto;">
 <caption>
-Proteínas relacionadas con Parkinson
+PLA2G6
 </caption>
 <thead>
 <tr>
@@ -12876,7 +13145,8 @@ affecting the gene represented in this entry.
 O60733
 </td>
 <td style="text-align:left;">
-Q8TAP6 Q9NZL9 Q8N1F7 O60733 O95199 Q9BVN2 Q14140 Q86XT4 Q70EL1-9 B2RXF5
+Q8TAP6; Q9NZL9; Q8N1F7; O60733; O95199; Q9BVN2; Q14140; Q86XT4;
+Q70EL1-9; B2RXF5
 </td>
 <td style="text-align:left;">
 PLA2G6 PLPLA9
@@ -12896,13 +13166,31 @@ hydrolase) (EC 3.1.2.2) (Patatin-like phospholipase domain-containing
 protein 9) (PNPLA9)
 </td>
 <td style="text-align:left;">
-<a href="GO:0005829" class="uri">GO:0005829</a> <a href="GO:0005615" class="uri">GO:0005615</a> <a href="GO:0015630" class="uri">GO:0015630</a> <a href="GO:0005739" class="uri">GO:0005739</a> <a href="GO:0016607" class="uri">GO:0016607</a> <a href="GO:0005886" class="uri">GO:0005886</a> <a href="GO:0031143" class="uri">GO:0031143</a>
+cytosol [<a href="GO:0005829" class="uri">GO:0005829</a>]; extracellular
+space [<a href="GO:0005615" class="uri">GO:0005615</a>]; microtubule
+cytoskeleton [<a href="GO:0015630" class="uri">GO:0015630</a>];
+mitochondrion [<a href="GO:0005739" class="uri">GO:0005739</a>]; nuclear
+speck [<a href="GO:0016607" class="uri">GO:0016607</a>]; plasma membrane
+[<a href="GO:0005886" class="uri">GO:0005886</a>]; pseudopodium [<a href="GO:0031143" class="uri">GO:0031143</a>]
 </td>
 <td style="text-align:left;">
-<a href="GO:0019731" class="uri">GO:0019731</a> <a href="GO:0035965" class="uri">GO:0035965</a> <a href="GO:0032049" class="uri">GO:0032049</a> <a href="GO:0006935" class="uri">GO:0006935</a> <a href="GO:0038096" class="uri">GO:0038096</a> <a href="GO:0046473" class="uri">GO:0046473</a> <a href="GO:0034638" class="uri">GO:0034638</a> <a href="GO:0046338" class="uri">GO:0046338</a> <a href="GO:0046469" class="uri">GO:0046469</a> <a href="GO:2000304" class="uri">GO:2000304</a> <a href="GO:0035774" class="uri">GO:0035774</a>
+antibacterial humoral response [<a href="GO:0019731" class="uri">GO:0019731</a>]; cardiolipin acyl-chain remodeling [<a href="GO:0035965" class="uri">GO:0035965</a>]; cardiolipin biosynthetic
+process [<a href="GO:0032049" class="uri">GO:0032049</a>]; chemotaxis
+[<a href="GO:0006935" class="uri">GO:0006935</a>]; Fc-gamma receptor
+signaling pathway involved in phagocytosis [<a href="GO:0038096" class="uri">GO:0038096</a>]; phosphatidic acid metabolic process [<a href="GO:0046473" class="uri">GO:0046473</a>]; phosphatidylcholine
+catabolic process [<a href="GO:0034638" class="uri">GO:0034638</a>];
+phosphatidylethanolamine catabolic process [<a href="GO:0046338" class="uri">GO:0046338</a>]; platelet activating factor metabolic
+process [<a href="GO:0046469" class="uri">GO:0046469</a>]; positive
+regulation of ceramide biosynthetic process [<a href="GO:2000304" class="uri">GO:2000304</a>]; positive regulation of insulin secretion
+involved in cellular response to glucose stimulus [<a href="GO:0035774" class="uri">GO:0035774</a>]
 </td>
 <td style="text-align:left;">
-<a href="GO:0003847" class="uri">GO:0003847</a> <a href="GO:0047499" class="uri">GO:0047499</a> <a href="GO:0005516" class="uri">GO:0005516</a> <a href="GO:0016787" class="uri">GO:0016787</a> <a href="GO:0042802" class="uri">GO:0042802</a> <a href="GO:0004622" class="uri">GO:0004622</a> <a href="GO:0102991" class="uri">GO:0102991</a> <a href="GO:0016290" class="uri">GO:0016290</a> <a href="GO:0102545" class="uri">GO:0102545</a> <a href="GO:0004623" class="uri">GO:0004623</a> <a href="GO:0017171" class="uri">GO:0017171</a>
+1-alkyl-2-acetylglycerophosphocholine esterase activity [<a href="GO:0003847" class="uri">GO:0003847</a>]; calcium-independent
+phospholipase A2 activity [<a href="GO:0047499" class="uri">GO:0047499</a>]; calmodulin binding [<a href="GO:0005516" class="uri">GO:0005516</a>]; hydrolase activity [<a href="GO:0016787" class="uri">GO:0016787</a>]; identical protein binding [<a href="GO:0042802" class="uri">GO:0042802</a>]; lysophospholipase
+activity [<a href="GO:0004622" class="uri">GO:0004622</a>];
+myristoyl-CoA hydrolase activity [<a href="GO:0102991" class="uri">GO:0102991</a>]; palmitoyl-CoA hydrolase activity [<a href="GO:0016290" class="uri">GO:0016290</a>]; phosphatidyl
+phospholipase B activity [<a href="GO:0102545" class="uri">GO:0102545</a>]; phospholipase A2 activity [<a href="GO:0004623" class="uri">GO:0004623</a>]; serine hydrolase activity
+[<a href="GO:0017171" class="uri">GO:0017171</a>]
 </td>
 </tr>
 </tbody>
