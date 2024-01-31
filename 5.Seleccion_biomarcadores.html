@@ -2201,12 +2201,13 @@ pacientes de Parkinson (Lehtonen et al., 2019).</p></li>
 <p>Los circRNAs enriquecidos en estos términos, los cuales se exponen a
 continuación, pasarán por lo tanto a formar parte de los candidatos a
 biomarcadores para Parkinson.</p>
-<pre class="r"><code>KMGD_selected &lt;- KMGD_Imp_filtrado[c(2,3,4,5,6,14),]
+<pre class="r"><code>KMGD_selected &lt;- KMGD_Imp_filtrado[c(2,16,17,18,19,20),]
 KMGD_candidatos &lt;- unique(unlist(strsplit(KMGD_selected$geneID, &quot; &quot;)))
 KMGD_candidatos</code></pre>
-<pre><code>##  [1] &quot;BRAF&quot;    &quot;MBP&quot;     &quot;MAPK1&quot;   &quot;NF1&quot;     &quot;PTPN11&quot;  &quot;SHOC2&quot;   &quot;ERBB2&quot;  
-##  [8] &quot;EDC3&quot;    &quot;PFKP&quot;    &quot;CNOT2&quot;   &quot;CNOT1&quot;   &quot;CNOT9&quot;   &quot;PABPC1L&quot; &quot;PARN&quot;   
-## [15] &quot;CHEK2&quot;   &quot;MDM2&quot;</code></pre>
+<pre><code>##  [1] &quot;BRAF&quot;     &quot;MBP&quot;      &quot;MAPK1&quot;    &quot;NF1&quot;      &quot;ST6GAL2&quot;  &quot;FUT8&quot;    
+##  [7] &quot;PFKP&quot;     &quot;PRKCB&quot;    &quot;FOXO3&quot;    &quot;ERBB2&quot;    &quot;MED13&quot;    &quot;NCOA1&quot;   
+## [13] &quot;SLC16A10&quot; &quot;RHEB&quot;     &quot;MDM2&quot;     &quot;UBE2K&quot;    &quot;FANCL&quot;    &quot;BRCA1&quot;   
+## [19] &quot;HERC1&quot;    &quot;UBE3C&quot;    &quot;UBE2I&quot;</code></pre>
 </div>
 <div id="selección-de-términos-gene-ontology" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> Selección de términos
@@ -13459,7 +13460,7 @@ Genes_signif &lt;- unique(unlist(strsplit(Term_signif$geneID, &quot; &quot;)))
 Genes_signif_select &lt;- Genes_signif[Genes_signif %in% interacciones$Predictor]
 
 print(Genes_signif_select)</code></pre>
-<pre><code>## [1] &quot;STX6&quot;    &quot;WASHC2C&quot; &quot;SMARCD1&quot; &quot;ATXN1&quot;</code></pre>
+<pre><code>## [1] &quot;UBE2K&quot;   &quot;STX6&quot;    &quot;WASHC2C&quot; &quot;SMARCD1&quot; &quot;ATXN1&quot;</code></pre>
 <p><br></p>
 </div>
 </div>
@@ -13478,21 +13479,33 @@ proteínas que la evidencia ha relacionado con el Parkinson.</p>
 <p>Estos 16 términos conllevan un total de 93 genes enriquecidos, los
 cuales se exponen a continuación.</p>
 <pre class="r"><code>unique(c(KMGD_candidatos, GO_candidatos))</code></pre>
-<pre><code>##  [1] &quot;BRAF&quot;     &quot;MBP&quot;      &quot;MAPK1&quot;    &quot;NF1&quot;      &quot;PTPN11&quot;   &quot;SHOC2&quot;   
-##  [7] &quot;ERBB2&quot;    &quot;EDC3&quot;     &quot;PFKP&quot;     &quot;CNOT2&quot;    &quot;CNOT1&quot;    &quot;CNOT9&quot;   
-## [13] &quot;PABPC1L&quot;  &quot;PARN&quot;     &quot;CHEK2&quot;    &quot;MDM2&quot;     &quot;MGRN1&quot;    &quot;GGA3&quot;    
-## [19] &quot;RAB21&quot;    &quot;MON2&quot;     &quot;TPCN1&quot;    &quot;WASHC2A&quot;  &quot;STX6&quot;     &quot;TBC1D2B&quot; 
-## [25] &quot;ALS2&quot;     &quot;GPR107&quot;   &quot;LDLRAD4&quot;  &quot;INPP5B&quot;   &quot;MARCHF8&quot;  &quot;RABGAP1L&quot;
-## [31] &quot;ZFYVE26&quot;  &quot;AP1G1&quot;    &quot;AP3D1&quot;    &quot;WAPL&quot;     &quot;ATRX&quot;     &quot;RBL1&quot;    
-## [37] &quot;LATS1&quot;    &quot;UIMC1&quot;    &quot;BRCA1&quot;    &quot;BARD1&quot;    &quot;RNASEH2B&quot; &quot;CDK5RAP2&quot;
-## [43] &quot;DTL&quot;      &quot;WAC&quot;      &quot;TERF2&quot;    &quot;BUB1&quot;     &quot;ECPAS&quot;    &quot;EEA1&quot;    
-## [49] &quot;WASHC2C&quot;  &quot;XRN1&quot;     &quot;USP7&quot;     &quot;SETDB2&quot;   &quot;SLF2&quot;     &quot;POLA1&quot;   
-## [55] &quot;NUP205&quot;   &quot;SMARCC1&quot;  &quot;AKAP8L&quot;   &quot;SMARCD1&quot;  &quot;ATXN1&quot;    &quot;HNRNPM&quot;  
-## [61] &quot;SMARCA4&quot;  &quot;KIF14&quot;    &quot;ASPM&quot;     &quot;WDR37&quot;    &quot;ZEB1&quot;     &quot;PCM1&quot;    
-## [67] &quot;KDM1A&quot;    &quot;CRKL&quot;     &quot;SCYL2&quot;    &quot;NCOA1&quot;    &quot;HERC1&quot;    &quot;STIL&quot;    
-## [73] &quot;KDM4C&quot;    &quot;NSD1&quot;     &quot;JADE1&quot;    &quot;KAT6B&quot;    &quot;MED14&quot;    &quot;MED27&quot;   
-## [79] &quot;MED4&quot;     &quot;MMS19&quot;    &quot;MTDH&quot;     &quot;NCOA6&quot;    &quot;ATF7IP&quot;   &quot;HDAC9&quot;   
-## [85] &quot;PHF12&quot;    &quot;MECP2&quot;    &quot;MIER2&quot;    &quot;MED1&quot;     &quot;CASP8AP2&quot;</code></pre>
+<pre><code>##  [1] &quot;BRAF&quot;     &quot;MBP&quot;      &quot;MAPK1&quot;    &quot;NF1&quot;      &quot;ST6GAL2&quot;  &quot;FUT8&quot;    
+##  [7] &quot;PFKP&quot;     &quot;PRKCB&quot;    &quot;FOXO3&quot;    &quot;ERBB2&quot;    &quot;MED13&quot;    &quot;NCOA1&quot;   
+## [13] &quot;SLC16A10&quot; &quot;RHEB&quot;     &quot;MDM2&quot;     &quot;UBE2K&quot;    &quot;FANCL&quot;    &quot;BRCA1&quot;   
+## [19] &quot;HERC1&quot;    &quot;UBE3C&quot;    &quot;UBE2I&quot;    &quot;MGRN1&quot;    &quot;GGA3&quot;     &quot;RAB21&quot;   
+## [25] &quot;MON2&quot;     &quot;TPCN1&quot;    &quot;WASHC2A&quot;  &quot;STX6&quot;     &quot;TBC1D2B&quot;  &quot;ALS2&quot;    
+## [31] &quot;GPR107&quot;   &quot;LDLRAD4&quot;  &quot;INPP5B&quot;   &quot;MARCHF8&quot;  &quot;RABGAP1L&quot; &quot;ZFYVE26&quot; 
+## [37] &quot;AP1G1&quot;    &quot;AP3D1&quot;    &quot;WAPL&quot;     &quot;ATRX&quot;     &quot;CHEK2&quot;    &quot;RBL1&quot;    
+## [43] &quot;LATS1&quot;    &quot;UIMC1&quot;    &quot;BARD1&quot;    &quot;PTPN11&quot;   &quot;RNASEH2B&quot; &quot;CDK5RAP2&quot;
+## [49] &quot;DTL&quot;      &quot;WAC&quot;      &quot;TERF2&quot;    &quot;BUB1&quot;     &quot;ECPAS&quot;    &quot;EEA1&quot;    
+## [55] &quot;WASHC2C&quot;  &quot;XRN1&quot;     &quot;USP7&quot;     &quot;SETDB2&quot;   &quot;SLF2&quot;     &quot;POLA1&quot;   
+## [61] &quot;NUP205&quot;   &quot;SMARCC1&quot;  &quot;AKAP8L&quot;   &quot;SMARCD1&quot;  &quot;ATXN1&quot;    &quot;HNRNPM&quot;  
+## [67] &quot;SMARCA4&quot;  &quot;KIF14&quot;    &quot;ASPM&quot;     &quot;WDR37&quot;    &quot;ZEB1&quot;     &quot;PCM1&quot;    
+## [73] &quot;KDM1A&quot;    &quot;CRKL&quot;     &quot;SCYL2&quot;    &quot;STIL&quot;     &quot;KDM4C&quot;    &quot;NSD1&quot;    
+## [79] &quot;JADE1&quot;    &quot;KAT6B&quot;    &quot;MED14&quot;    &quot;MED27&quot;    &quot;MED4&quot;     &quot;MMS19&quot;   
+## [85] &quot;MTDH&quot;     &quot;NCOA6&quot;    &quot;ATF7IP&quot;   &quot;HDAC9&quot;    &quot;PHF12&quot;    &quot;MECP2&quot;   
+## [91] &quot;MIER2&quot;    &quot;MED1&quot;     &quot;CASP8AP2&quot;</code></pre>
+<!-- BRAF     MBP      MAPK1    NF1      ST6GAL2  FUT8     PFKP     PRKCB    FOXO3    -->
+<!-- ERBB2    MED13    NCOA1    SLC16A10 RHEB     MDM2     UBE2K    FANCL    BRCA1    -->
+<!-- HERC1    UBE3C    UBE2I    MGRN1    GGA3     RAB21    MON2     TPCN1    WASHC2A  -->
+<!-- STX6     TBC1D2B  ALS2     GPR107   LDLRAD4  INPP5B   MARCHF8  RABGAP1L ZFYVE26  -->
+<!-- AP1G1    AP3D1    WAPL     ATRX     CHEK2    RBL1     LATS1    UIMC1    BARD1    -->
+<!-- PTPN11   RNASEH2B CDK5RAP2 DTL      WAC      TERF2    BUB1     ECPAS    EEA1     -->
+<!-- WASHC2C  XRN1     USP7     SETDB2   SLF2     POLA1    NUP205   SMARCC1  AKAP8L   -->
+<!-- SMARCD1  ATXN1    HNRNPM   SMARCA4  KIF14    ASPM     WDR37    ZEB1     PCM1     -->
+<!-- KDM1A    CRKL     SCYL2    STIL     KDM4C    NSD1     JADE1    KAT6B    MED14    -->
+<!-- MED27    MED4     MMS19    MTDH     NCOA6    ATF7IP   HDAC9    PHF12    MECP2    -->
+<!-- MIER2    MED1     CASP8AP2 -->
 <p>Estos 93 predictores presentan suficiente interés para ser
 investigados como biomarcadores candidatos. No obstante, 5 de ellos
 además formaron parte de todos los modelos predictivos considerados
@@ -13500,6 +13513,12 @@ además formaron parte de todos los modelos predictivos considerados
 permite considerarlos como biomarcadores candidatos favoritos de
 momento. Futuros estudios podrían justificar la inclusión de un número
 mayor de estos predictores como favoritos.</p>
+<pre class="r"><code># Genes representados en todos los modelos predictivos y como parte de los términos enriquecidos.
+top21 &lt;- readRDS(&quot;../2. Estudio_Predictores/Top21&quot;)
+top21Symbol &lt;- sub(&quot;^circ&quot;, &quot;&quot;, top21)
+
+top21Symbol[top21Symbol %in% unique(c(KMGD_candidatos, GO_candidatos))]</code></pre>
+<pre><code>## [1] &quot;ERBB2&quot;    &quot;RNASEH2B&quot; &quot;KDM1A&quot;    &quot;UBE2I&quot;    &quot;RABGAP1L&quot;</code></pre>
 <p>Por otro lado se han realizado estudios suplementarios, exponiéndose
 que uno de los predictores (PLA2G6) presenta una relación directa y
 caracterizada en el tipo 14 de Parkinson y que un total de 20
@@ -13530,7 +13549,7 @@ Session info
 ##  collate  Spanish_Spain.utf8
 ##  ctype    Spanish_Spain.utf8
 ##  tz       Europe/Madrid
-##  date     2024-01-24
+##  date     2024-01-30
 ##  pandoc   3.1.1 @ C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools/ (via rmarkdown)
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
